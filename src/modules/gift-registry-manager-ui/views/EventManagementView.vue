@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -26,6 +26,7 @@ import ProQuery from '@/shared/components/ProQuery.vue'
 import TextEllipsis from '@/shared/components/TextEllipsis.vue'
 import type { QueryField } from '@/shared/api/types'
 import { useEventManagement } from '../hooks/useEventManagement'
+import { useEventSettings } from '../hooks/useEventSettings'
 import type { GiftEvent } from '../types'
 import '../gift-registry.css'
 
@@ -33,6 +34,11 @@ defineOptions({ name: 'GiftEventManagement' })
 const { t } = useI18n()
 const router = useRouter()
 const manager = useEventManagement()
+const EventFormModal = defineAsyncComponent(
+  () => import('../components/EventFormModal.vue'),
+)
+// Creating here refreshes this list with its existing filters and pagination.
+const config = useEventSettings(ref(undefined), ref(undefined), ref([]), manager.load)
 const queryFields = computed<QueryField[]>(() => [
   { key: 'name', label: 'gift.eventName' },
   {
@@ -76,10 +82,8 @@ function openEvent(event: GiftEvent, edit = false) {
         <a-space wrap>
           <a-button
             v-if="manager.canSave.value"
-            :disabled="manager.task.busy.value"
-            @click="
-              router.push({ name: 'gift-registry', query: { create: '1' } })
-            "
+            :disabled="manager.task.busy.value || config.task.busy.value"
+            @click="config.openEvent(true)"
           >
             {{ t('gift.newEvent') }}
           </a-button>
@@ -207,6 +211,16 @@ function openEvent(event: GiftEvent, edit = false) {
           </template>
         </data-table>
       </div>
+      <event-form-modal
+        :open="config.eventOpen.value"
+        :creating="config.creating.value"
+        :model="config.eventDraft"
+        :busy="config.task.busy.value"
+        :error="config.task.error.value"
+        :preview="config.eventPreview.value"
+        @cancel="config.eventOpen.value = false"
+        @submit="config.saveEvent"
+      />
     </page-container>
   </a-config-provider>
 </template>

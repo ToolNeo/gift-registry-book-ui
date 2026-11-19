@@ -23,14 +23,17 @@ export function useRegistration(completed: () => void) {
     disposed = false,
     usernameGeneration = 0,
     usernameRequest: AbortController | undefined
-  const emailCode = useEmailCode((signal, captcha) => {
-    if (!form.email.trim() || !validEmail(form.email) || form.email.trim().length > 255)
-      throw new Error(t('auth.emailInvalid'))
-    return registrationApi.sendCode(form.email.trim(), captcha, {
-      signal,
-      silent: true,
-    })
-  })
+  const emailCode = useEmailCode(
+    (signal, captcha) => {
+      if (!form.email.trim() || !validEmail(form.email) || form.email.trim().length > 255)
+        throw new Error(t('auth.emailInvalid'))
+      return registrationApi.sendCode(form.email.trim(), captcha, {
+        signal,
+        silent: true,
+      })
+    },
+    { bindCaptcha: true },
+  )
   watch(
     () => form.email,
     () => emailCode.reset(),
@@ -112,7 +115,7 @@ export function useRegistration(completed: () => void) {
         throw new Error(t('auth.emailInvalid'))
       if (!validPassword(form.password)) throw new Error(t('accountPassword.rule'))
       if (form.password !== form.confirmPassword) throw new Error(t('system.passwordMismatch'))
-      const proof = emailCode.proof()
+      const proof = { ...emailCode.proof(), ...emailCode.captcha.proof() }
       writing.value = true
       // Closing cannot undo account creation; keep the submitted draft locked until it settles.
       const result = await registrationApi.register(

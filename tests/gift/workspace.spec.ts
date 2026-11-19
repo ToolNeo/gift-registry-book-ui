@@ -995,7 +995,8 @@ test('required event presets preview and render all ten event styles with bundle
 }, testInfo) => {
   const state = await fixture(context)
   await page.goto('/gift-registry')
-  test.setTimeout(180000)
+  // Ten types each render desktop/mobile screenshots and exercise their display link.
+  test.setTimeout(480000)
   const presets = [
     { type: 'WEDDING', name: '结婚', label: '贺礼', color: 'rgb(142, 38, 48)' },
     {
@@ -2037,12 +2038,12 @@ test('activity management menus and routes follow configured names paths visibil
   expect(errors).toEqual([])
 })
 
-test('activity management creates through the existing book form and consumes its route intent once', async ({
+test('activity management creates in place through the shared form and preserves filters', async ({
   page,
   context,
 }, testInfo) => {
   const state = await fixture(context)
-  await page.goto('/gift-registry/events')
+  await page.goto('/gift-registry/events?keep=1')
   const create = page.getByRole('button', { name: '新建活动', exact: true })
   await expect(create).toBeVisible()
   await page.screenshot({
@@ -2051,18 +2052,26 @@ test('activity management creates through the existing book form and consumes it
   await create.click()
   const modal = page.getByRole('dialog')
   await expect(modal.getByRole('radio')).toHaveCount(10)
-  await expect(page).toHaveURL(/\/gift-registry$/)
+  await expect(page).toHaveURL(/\/gift-registry\/events\?keep=1$/)
+  await expect(
+    page
+      .getByRole('navigation', { name: '一级菜单' })
+      .getByRole('menuitem', { name: '活动管理', exact: true }),
+  ).toHaveClass(/ant-menu-item-selected/)
   await modal.getByLabel('活动名称', { exact: true }).fill('取消的活动')
   await modal.getByRole('button', { name: '取消', exact: true }).click()
   await expect(modal).not.toBeVisible()
   expect(state.events).toHaveLength(2)
   await page.reload()
   await expect(
-    page.getByRole('heading', { name: '电子礼簿', exact: true }),
+    page.getByRole('heading', { name: '活动管理', exact: true }),
   ).toBeVisible()
   await expect(modal).toHaveCount(0)
 
-  await page.goto('/gift-registry/events')
+  const query = page.locator('.gift-management-table .pro-query')
+  await query.locator('.query-value-container input').fill('列表')
+  await query.getByRole('button', { name: '搜索', exact: true }).click()
+  await expect(page.locator('.ant-table-row')).toHaveCount(0)
   await create.click()
   await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue('')
   await modal.getByLabel('活动名称', { exact: true }).fill('列表新建满月酒')
@@ -2071,6 +2080,11 @@ test('activity management creates through the existing book form and consumes it
   await expect(
     modal.locator('.gift-event-style-preview .gift-book'),
   ).toHaveAttribute('data-event-type', 'FULL_MOON')
+  await modal.getByRole('button', { name: '放大预览', exact: true }).click()
+  const preview = page.getByRole('dialog', { name: '预览', exact: true })
+  await expect(preview.locator('.gift-book')).toHaveAttribute('data-event-type', 'FULL_MOON')
+  await preview.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(preview).not.toBeVisible()
   const date = modal.getByLabel('活动日期', { exact: true })
   expect(await date.getAttribute('type')).not.toBe('date')
   const next = new Date(`${await date.inputValue()}T00:00:00Z`)
@@ -2108,7 +2122,20 @@ test('activity management creates through the existing book form and consumes it
     description: '亲友相聚，喜迎新生',
     eventDate: selectedDate,
   })
-  await page.goto('/gift-registry/events')
+  await expect(page).toHaveURL(/\/gift-registry\/events\?keep=1$/)
+  await expect(query.locator('.query-value-container input')).toHaveValue('列表')
+  await expect(page.locator('.ant-table-row')).toHaveCount(1)
+  await expect(
+    page
+      .getByRole('navigation', { name: '一级菜单' })
+      .getByRole('menuitem', { name: '活动管理', exact: true }),
+  ).toHaveClass(/ant-menu-item-selected/)
+  const queries = state.requests.filter(
+    (request) => request.path === '/gift-registry/events/_query',
+  )
+  expect(queries.at(-1)?.body).toMatchObject({
+    terms: [{ column: 'name', value: '%列表%' }],
+  })
   const row = page.getByRole('row').filter({
     has: page.getByRole('cell', { name: '列表新建满月酒', exact: true }),
   })
@@ -2121,15 +2148,10 @@ test('activity management creates through the existing book form and consumes it
   )
   await modal.getByRole('button', { name: '取消', exact: true }).click()
 
-  await page.goto('/gift-registry?create=1&keep=1')
+  await page.getByRole('button', { name: '新建活动', exact: true }).click()
   await expect(modal.getByRole('radio')).toHaveCount(10)
-  await expect(page).toHaveURL(/\/gift-registry\?keep=1$/)
+  await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue('')
   await modal.getByRole('button', { name: '取消', exact: true }).click()
-  await page.reload()
-  await expect(
-    page.getByRole('heading', { name: '电子礼簿', exact: true }),
-  ).toBeVisible()
-  await expect(modal).toHaveCount(0)
 })
 
 test('activity management creates the first activity on a narrow screen', async ({
@@ -2177,9 +2199,13 @@ test('activity management creates the first activity on a narrow screen', async 
     eventType: 'HUNDRED_DAYS',
     eventDate: selectedDate,
   })
+  await expect(page).toHaveURL(/\/gift-registry\/events$/)
   await expect(
-    page.locator('.gift-event-picker .ant-select-selection-item'),
-  ).toContainText('首场百天酒')
+    page.getByRole('heading', { name: '活动管理', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('cell', { name: '首场百天酒', exact: true }),
+  ).toBeVisible()
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

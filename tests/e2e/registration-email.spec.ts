@@ -89,7 +89,7 @@ test('registration verifies email, recovers failed delivery and creates only the
     document.cookie = 'registration-test=omit-me; Path=/; SameSite=Lax'
   })
   await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
-  await expect(modal.getByText('请先填写图形验证码，再发送邮件', { exact: true })).toBeVisible()
+  await expect(modal.getByText('请填写图形验证码', { exact: true })).toBeVisible()
   expect(sent).toEqual([])
   await modal.getByLabel('图形验证码', { exact: true }).fill('WRONG')
   await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
@@ -106,6 +106,7 @@ test('registration verifies email, recovers failed delivery and creates only the
   await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
   await expect(modal.getByRole('button', { name: /秒后重发$/ })).toBeDisabled()
   await expect(modal.getByText('验证码发送至：p***@example.com', { exact: true })).toBeVisible()
+  await expect(modal.getByLabel('图形验证码', { exact: true })).toHaveValue('A2BCD')
   const code = modal.getByLabel('邮箱验证码', { exact: true })
   await expect(code).toHaveAttribute('inputmode', 'numeric')
   await expect(code).toHaveAttribute('maxlength', '6')
@@ -134,6 +135,8 @@ test('registration verifies email, recovers failed delivery and creates only the
       password: ' Newpassword123 ',
       challengeId: 'registration-code',
       code,
+      verifyKey: 'image-key',
+      verifyCode: 'A2BCD',
     })),
   )
   expect(sent).toEqual(
@@ -331,11 +334,12 @@ test('legacy contact email needs first binding before password verification and 
   await expect(modal.getByText('请先发送邮箱验证码', { exact: true })).toBeVisible()
   expect(passwordRequests).toEqual([])
   await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
-  await expect(modal.getByText('请先填写图形验证码，再发送邮件', { exact: true })).toBeVisible()
+  await expect(modal.getByText('请填写图形验证码', { exact: true })).toBeVisible()
   expect(codeRequests).toEqual([])
   await imageProof(modal)
   await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
   await expect.poll(() => codeRequests).toEqual([{ verifyKey: 'image-key', verifyCode: 'A2BCD' }])
+  await expect(modal.getByLabel('图形验证码', { exact: true })).toHaveValue('A2BCD')
   await modal.getByLabel('邮箱验证码', { exact: true }).fill('012345')
   await page.screenshot({
     path: test.info().outputPath('password-email-mobile.png'),
@@ -350,6 +354,8 @@ test('legacy contact email needs first binding before password verification and 
       newPassword: 'Newpassword123',
       challengeId: 'password-code',
       code: '012345',
+      verifyKey: 'image-key',
+      verifyCode: 'A2BCD',
     },
   ])
   expect(await page.evaluate(() => localStorage.getItem('proto-bridge-ui:token'))).toBeNull()
@@ -406,4 +412,116 @@ for (const viewport of [
     expect(errors).toEqual([])
     expect(warnings).toEqual([])
   })
+}
+
+for (const width of [1280, 390]) {
+  for (const flow of ['registration', 'password'] as const) {
+    test(`${flow} retains its image and submits both proofs (${width}px)`, async ({ page }) => {
+      const errors: string[] = [],
+        submissions: Record<string, unknown>[] = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await page.setViewportSize({ width, height: 900 })
+      const issuePath =
+        flow === 'registration' ? '/authorize/register/email-code' : '/user/me/password/email-code'
+      const finalPath = flow === 'registration' ? '/authorize/register' : '/user/me/password'
+      await page.route(`**/api${issuePath}`, (route) =>
+        route.fulfill({
+          json: {
+            success: true,
+            status: 200,
+            result: {
+              challengeId: 'joint-proof',
+              expiresIn: 300,
+              resendAfter: 60,
+              maskedEmail: 'p***@example.com',
+            },
+          },
+        }),
+      )
+      await page.route(`**/api${finalPath}`, (route) => {
+        const body = route.request().postDataJSON()
+        submissions.push(body)
+        const accepted =
+          body.challengeId === 'joint-proof' &&
+          body.code === '012345' &&
+          body.verifyKey === 'image-key' &&
+          body.verifyCode === 'A2BCD'
+        return route.fulfill({
+          status: accepted ? 200 : 400,
+          json: {
+            success: accepted,
+            status: accepted ? 200 : 400,
+            result: flow === 'registration' ? { registered: accepted } : accepted,
+            message: accepted ? undefined : '图形或邮箱验证码错误',
+          },
+        })
+      })
+      if (flow === 'registration') {
+        await page.goto('login')
+        await page.getByRole('button', { name: '注册账号', exact: true }).click()
+        const modal = page.getByRole('dialog')
+        await modal.getByLabel('用户名', { exact: true }).fill('joint-user')
+        await modal.getByLabel('名称', { exact: true }).fill('联合验证用户')
+        await modal.getByLabel('电子邮箱', { exact: true }).fill('person@example.com')
+        await modal.getByLabel('密码', { exact: true }).fill('Newpassword123')
+        await modal.getByLabel('确认密码', { exact: true }).fill('Newpassword123')
+      } else {
+        await login(page, '用户管理')
+        await page.goto('account/center')
+        await page.getByRole('button', { name: '修改密码', exact: true }).click()
+        const modal = page.getByRole('dialog')
+        await modal.getByLabel('旧密码', { exact: true }).fill('old-password')
+        await modal.getByRole('button', { name: '下一步', exact: true }).click()
+        await modal.getByLabel('新密码', { exact: true }).fill('Newpassword123')
+        await modal.getByRole('button', { name: '下一步', exact: true }).click()
+        await modal.getByLabel('确认密码', { exact: true }).fill('Newpassword123')
+      }
+      const modal = page.getByRole('dialog')
+      await imageProof(modal)
+      const image = await modal
+        .getByRole('img', { name: '图形验证码', exact: true })
+        .getAttribute('src')
+      await modal.getByRole('button', { name: '发送验证码', exact: true }).click()
+      await expect(modal.getByRole('button', { name: /秒后重发$/ })).toBeDisabled()
+      await expect(
+        modal.getByText(`验证码发送至：${flow === 'registration' ? 'p' : 'a'}***@example.com`, {
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(modal.getByLabel('图形验证码', { exact: true })).toHaveValue('A2BCD')
+      await expect(modal.getByRole('img', { name: '图形验证码', exact: true })).toHaveAttribute(
+        'src',
+        image!,
+      )
+      await modal.getByLabel('邮箱验证码', { exact: true }).fill('012345')
+      await modal.getByLabel('图形验证码', { exact: true }).fill('WRONG')
+      const submit = modal.getByRole('button', {
+        name: flow === 'registration' ? '注册账号' : '保存',
+        exact: true,
+      })
+      await submit.click()
+      await expect(modal.getByText('图形或邮箱验证码错误', { exact: true })).toBeVisible()
+      await modal.getByLabel('图形验证码', { exact: true }).fill('A2BCD')
+      expect(await modal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      )
+      await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+      await page.screenshot({
+        path: test.info().outputPath(`${flow}-joint-${width}.png`),
+        fullPage: true,
+        animations: 'disabled',
+      })
+      await submit.click()
+      await expect(modal).toHaveCount(0)
+      expect(submissions).toHaveLength(2)
+      expect(
+        submissions.map((body) => ({ verifyKey: body.verifyKey, verifyCode: body.verifyCode })),
+      ).toEqual([
+        { verifyKey: 'image-key', verifyCode: 'WRONG' },
+        { verifyKey: 'image-key', verifyCode: 'A2BCD' },
+      ])
+      expect(errors).toEqual([])
+    })
+  }
 }

@@ -15,7 +15,6 @@ import {
   Button as AButton,
   ConfigProvider as AConfigProvider,
   Card as ACard,
-  DatePicker as ADatePicker,
   Descriptions as ADescriptions,
   DescriptionsItem as ADescriptionsItem,
   Empty as AEmpty,
@@ -24,15 +23,12 @@ import {
   InputNumber as AInputNumber,
   Modal as AModal,
   Popconfirm as APopconfirm,
-  Radio as ARadio,
-  RadioGroup as ARadioGroup,
   Select as ASelect,
   Space as ASpace,
   Statistic as AStatistic,
   Tag as ATag,
   Timeline as ATimeline,
   TimelineItem as ATimelineItem,
-  Textarea as ATextarea,
   Upload as AUpload,
 } from 'ant-design-vue'
 import {
@@ -60,13 +56,15 @@ import { useEntryEditor } from '../hooks/useEntryEditor'
 import { useEventSettings } from '../hooks/useEventSettings'
 import { giftApi } from '../api'
 import { formatAmount } from '../utils/money'
-import { eventPresets } from '../themes'
 import '../gift-registry.css'
 import type { EntryAudit, GiftEntry } from '../types'
 
 defineOptions({ name: 'GiftRegistryWorkspace' })
 const DisplayBook = defineAsyncComponent(
   () => import('../components/DisplayBook.vue'),
+)
+const EventFormModal = defineAsyncComponent(
+  () => import('../components/EventFormModal.vue'),
 )
 const { t } = useI18n()
 const router = useRouter()
@@ -113,16 +111,6 @@ const editor = useEntryEditor(eventId, async () => {
   await refresh()
 })
 const config = useEventSettings(event, settings, entries, loadEvents)
-/** Consume the list's create intent once, without waiting for an existing activity to load. */
-watch(
-  [() => route.query.create, canSave],
-  ([create, allowed]) => {
-    if (create !== '1' || !allowed) return
-    config.openEvent(true)
-    void router.replace({ query: { ...route.query, create: undefined } })
-  },
-  { immediate: true },
-)
 /** Activity management reuses this editor after selecting the requested event, including legacy details. */
 watch(event, (current) => {
   if (
@@ -581,106 +569,16 @@ async function copyDisplay() {
           </a-card>
         </template>
       </div>
-      <form-modal
-        wrap-class-name="gift-management-modal"
+      <event-form-modal
         :open="config.eventOpen.value"
-        :title="t(config.creating.value ? 'gift.newEvent' : 'gift.editEvent')"
+        :creating="config.creating.value"
         :model="config.eventDraft"
         :busy="config.task.busy.value"
         :error="config.task.error.value"
-        :width="1000"
+        :preview="config.eventPreview.value"
         @cancel="config.eventOpen.value = false"
         @submit="config.saveEvent"
-      >
-        <a-form-item
-          name="eventType"
-          :label="t('gift.eventType')"
-          :rules="[{ required: true, message: t('gift.typeRequired') }]"
-        >
-          <a-radio-group
-            v-model:value="config.eventDraft.eventType"
-            class="gift-preset-options"
-          >
-            <a-radio
-              v-for="preset in eventPresets"
-              :key="preset.value"
-              :value="preset.value"
-              class="gift-preset-card"
-              :class="`gift-preset-card--${preset.value.toLowerCase()}`"
-            >
-              <span class="gift-preset-swatch" aria-hidden="true">{{
-                preset.ornament || '✾'
-              }}</span>
-              <strong>{{ t(`gift.${preset.value}`) }}</strong>
-              <span class="gift-preset-hint">{{
-                t(`gift.preset_${preset.value}`)
-              }}</span>
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item
-          name="name"
-          :label="t('gift.eventName')"
-          :rules="[
-            { required: true, whitespace: true, message: t('common.required') },
-          ]"
-          ><a-input v-model:value="config.eventDraft.name" :maxlength="100"
-        /></a-form-item>
-        <a-form-item
-          name="description"
-          :label="t('gift.description')"
-          :rules="[
-            {
-              required: true,
-              whitespace: true,
-              max: 1024,
-              message: t('gift.descriptionRequired'),
-            },
-          ]"
-          ><a-textarea
-            v-model:value="config.eventDraft.description"
-            :maxlength="1024"
-            :auto-size="{ minRows: 2, maxRows: 4 }"
-            show-count
-        /></a-form-item>
-        <a-form-item
-          name="eventDate"
-          :label="t('gift.eventDate')"
-          :rules="[{ required: true, message: t('common.required') }]"
-        >
-          <a-date-picker
-            v-model:value="config.eventDraft.eventDate"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <section
-          v-if="config.eventDraft.eventType"
-          class="gift-event-preview-section"
-        >
-          <div class="gift-event-preview-heading">
-            <strong>{{ t('gift.stylePreview') }}</strong
-            ><a-button type="link" @click="config.openPreview('event')">{{
-              t('gift.enlargePreview')
-            }}</a-button>
-          </div>
-          <div class="gift-event-style-preview">
-            <display-book :snapshot="config.eventPreview.value" />
-          </div>
-        </section>
-        <a-form-item
-          v-if="!config.creating.value"
-          name="status"
-          :label="t('gift.eventStatus')"
-          ><a-select
-            v-model:value="config.eventDraft.status"
-            :options="[
-              { value: 'ACTIVE', label: t('gift.active') },
-              { value: 'CLOSED', label: t('gift.closed') },
-            ]"
-        /></a-form-item>
-      </form-modal>
+      />
       <a-modal
         wrap-class-name="gift-management-modal"
         :open="editOpen"
@@ -742,7 +640,7 @@ async function copyDisplay() {
         <section class="gift-settings-section">
           <div class="gift-settings-heading">
             <h3>{{ t('gift.displayLayout') }}</h3>
-            <a-button @click="config.openPreview('display')">{{
+            <a-button @click="config.openPreview()">{{
               t('gift.preview')
             }}</a-button>
           </div>
@@ -941,105 +839,6 @@ async function copyDisplay() {
 </template>
 
 <style scoped>
-.gift-preset-options {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-3);
-  width: 100%;
-}
-.gift-preset-card {
-  margin: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: #8e2630;
-  color: #ffe6ad;
-  align-items: flex-start;
-}
-.gift-preset-card--birthday {
-  background: #9b2b20;
-  color: #ffefbc;
-}
-.gift-preset-card--funeral {
-  background: #f8f9f5;
-  color: #3e4a41;
-}
-.gift-preset-card--full_moon {
-  background: #f8d8d2;
-  color: #6f2a3f;
-}
-.gift-preset-card--hundred_days {
-  background: #f7e3be;
-  color: #684425;
-}
-.gift-preset-card--first_birthday {
-  background: #b9472d;
-  color: #fff0bf;
-}
-.gift-preset-card--engagement {
-  background: #88314e;
-  color: #ffe4cf;
-}
-.gift-preset-card--housewarming {
-  background: #1f5a52;
-  color: #fff0bf;
-}
-.gift-preset-card--graduation {
-  background: #243f67;
-  color: #fff0c2;
-}
-.gift-preset-card--business_opening {
-  background: #a52625;
-  color: #ffecb0;
-}
-.gift-preset-card.ant-radio-wrapper-checked {
-  outline: 2px solid currentColor;
-  outline-offset: -2px;
-}
-.gift-preset-card :deep(.ant-radio + span) {
-  flex: 1;
-  min-width: 0;
-}
-.gift-preset-swatch {
-  display: block;
-  font-family: 'Gift Handwriting', serif;
-  font-size: 40px;
-  line-height: 1.2;
-  margin-bottom: var(--space-2);
-}
-.gift-preset-hint {
-  display: block;
-  font-size: 12px;
-  margin-top: var(--space-2);
-  line-height: 1.5;
-}
-.gift-event-preview-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.gift-event-style-preview {
-  height: 480px;
-  overflow: hidden;
-  margin-bottom: var(--space-4);
-}
-.gift-event-style-preview :deep(.gift-book) {
-  height: 480px;
-  min-height: 480px;
-  grid-template-columns: minmax(170px, 28%) minmax(0, 1fr);
-}
-.gift-event-style-preview :deep(.gift-book-event h1) {
-  font-size: 26px;
-}
-.gift-event-style-preview :deep(.gift-book-description) {
-  font-size: 15px;
-}
-.gift-event-style-preview :deep(.gift-book-emblem) {
-  font-size: 90px;
-}
-.gift-event-style-preview :deep(.gift-book-photo) {
-  max-height: 220px;
-}
 .gift-workspace {
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
@@ -1191,15 +990,6 @@ async function copyDisplay() {
   }
 }
 @media (width <= 700px) {
-  .gift-preset-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .gift-preset-card {
-    padding: var(--space-3);
-  }
-  .gift-preset-swatch {
-    font-size: 32px;
-  }
   .gift-event-picker {
     width: 100%;
     min-width: 0;

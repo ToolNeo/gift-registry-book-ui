@@ -26,11 +26,14 @@ export function usePasswordChange(completed: () => Promise<void> | void) {
     newProof = '',
     active: AbortController | undefined
   const email = useResource((signal) => api.getMeEmail_api({ signal, silent: true }), undefined)
-  const emailCode = useEmailCode((signal, captcha) => {
-    if (email.loading.value || email.error.value || !email.data.value?.bound)
-      throw new Error(t('accountEmail.bindFirst'))
-    return api.sendPasswordEmailCode_api(captcha, { signal, silent: true })
-  })
+  const emailCode = useEmailCode(
+    (signal, captcha) => {
+      if (email.loading.value || email.error.value || !email.data.value?.bound)
+        throw new Error(t('accountEmail.bindFirst'))
+      return api.sendPasswordEmailCode_api(captcha, { signal, silent: true })
+    },
+    { bindCaptcha: true },
+  )
   const working = computed(() => busy.value || emailCode.busy.value)
   function invalidate() {
     generation++
@@ -149,7 +152,7 @@ export function usePasswordChange(completed: () => Promise<void> | void) {
       if (value.newPassword !== value.confirmPassword) throw new Error(t('system.passwordMismatch'))
       if (!email.data.value?.bound || email.error.value)
         throw new Error(t('accountEmail.bindFirst'))
-      const proof = emailCode.proof()
+      const proof = { ...emailCode.proof(), ...emailCode.captcha.proof() }
       // Earlier step validation is UI state only. Recheck before PUT, which also verifies old password.
       const old = await api.checkOldPassword_api(value.oldPassword, options)
       if (!current()) return
