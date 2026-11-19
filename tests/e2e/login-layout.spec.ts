@@ -2,9 +2,11 @@ import { expect, test, type Locator } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { expectDefaultBrandingAsset } from './branding-helpers'
 
-const defaultBackgroundWidth = readFileSync(
-  'src/modules/authentication-manager-ui/assets/login/login.png',
-).readUInt32BE(16)
+const defaultBackgroundWidth = Number(
+  readFileSync('src/modules/authentication-manager-ui/assets/login/login.svg', 'utf8').match(
+    /<svg\b[^>]*\bwidth="(\d+)"/,
+  )![1],
+)
 
 async function bounds(locator: Locator) {
   await expect(locator).toBeVisible()

@@ -1,5 +1,5 @@
-import logo from './logo/logo.png'
-import background from './login/login.png'
+import logo from './logo/logo.svg'
+import background from './login/login.svg'
 const ico = logo;
 import type { Branding } from '@/modules/authentication-manager-ui/types/basis'
 

@@ -8,14 +8,19 @@ export async function expectDefaultBrandingAsset(
 ) {
   const source = await locator.getAttribute(attribute)
   expect(source).toBeTruthy()
+  let svg: string
   if (source!.startsWith('data:image/svg+xml,')) {
-    const svg = decodeURIComponent(source!.slice('data:image/svg+xml,'.length))
-    expect(svg).toContain('Original project artwork, 2026 project contributors.')
-    expect(svg).toContain('SPDX-License-Identifier: Apache-2.0')
-    const dimensions = kind === 'background' ? '1440 1080' : '64 64'
-    expect(svg).toMatch(new RegExp(`viewBox=["']0 0 ${dimensions}["']`))
+    svg = decodeURIComponent(source!.slice('data:image/svg+xml,'.length))
+  } else if (source!.startsWith('data:image/svg+xml;base64,')) {
+    svg = Buffer.from(source!.slice('data:image/svg+xml;base64,'.length), 'base64').toString()
   } else {
-    const path = kind === 'background' ? 'login/login' : 'logo/logo'
-    await expect(locator).toHaveAttribute(attribute, new RegExp(`/assets/${path}\\.png(?:\\?.*)?$`))
+    const response = await locator.page().request.get(source!)
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain('image/svg+xml')
+    svg = await response.text()
   }
+  const dimensions = kind === 'background' ? '1400 1080' : '256 256'
+  const title = kind === 'background' ? '电子礼簿登录背景 · 礼有往来，情有所记' : '电子礼簿标志'
+  expect(svg).toContain(`<title>${title}</title>`)
+  expect(svg).toMatch(new RegExp(`viewBox=["']0 0 ${dimensions}["']`))
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 256 256" fill="none">
+  <title>电子礼簿标志</title>
+  <desc>朱砂红印记中，两页相向展开的礼簿承托一枚金色圆点，寓意以礼相连、以簿珍藏。</desc>
+  <rect x="12" y="12" width="232" height="232" rx="62" fill="#A83B32"/>
+  <circle cx="128" cy="62" r="12" fill="#E6C489"/>
+  <path d="M65 87C86 84 106 89 121 102V177C106 166 87 161 66 163C61 164 57 160 57 155V97C57 92 60 88 65 87Z" fill="#FFF9ED"/>
+  <path d="M191 87C170 84 150 89 135 102V177C150 166 169 161 190 163C195 164 199 160 199 155V97C199 92 196 88 191 87Z" fill="#FFF9ED"/>
+  <path d="M74 139C85 139 96 142 105 146M182 139C171 139 160 142 151 146" stroke="#A83B32" stroke-width="7" stroke-linecap="round"/>
+  <path d="M121 185L128 180L135 185V204L128 198L121 204V185Z" fill="#E6C489"/>
+</svg>
