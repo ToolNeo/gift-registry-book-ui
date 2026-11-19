@@ -25,9 +25,11 @@ import DataTable from '@/shared/components/DataTable.vue'
 import ProQuery from '@/shared/components/ProQuery.vue'
 import TextEllipsis from '@/shared/components/TextEllipsis.vue'
 import type { QueryField } from '@/shared/api/types'
+import { useResource } from '@/shared/composables/useResource'
 import { useEventManagement } from '../hooks/useEventManagement'
 import { useEventSettings } from '../hooks/useEventSettings'
-import type { GiftEvent } from '../types'
+import { giftApi } from '../api'
+import type { DisplaySettings, GiftEvent } from '../types'
 import '../gift-registry.css'
 
 defineOptions({ name: 'GiftEventManagement' })
@@ -37,8 +39,13 @@ const manager = useEventManagement()
 const EventFormModal = defineAsyncComponent(
   () => import('../components/EventFormModal.vue'),
 )
-// Creating here refreshes this list with its existing filters and pagination.
-const config = useEventSettings(ref(undefined), ref(undefined), ref([]), manager.load)
+const selectedEvent = ref<GiftEvent>()
+const settings = useResource<DisplaySettings | undefined>(
+  (signal) => giftApi.settings(selectedEvent.value!.id, { signal, silent: true }),
+  undefined,
+)
+// Both form actions refresh this list with its existing filters and pagination.
+const config = useEventSettings(selectedEvent, settings.data, ref([]), manager.load)
 const queryFields = computed<QueryField[]>(() => [
   { key: 'name', label: 'gift.eventName' },
   {
@@ -64,10 +71,17 @@ const columns = computed<TableColumnsType<GiftEvent>>(() => [
   },
   { title: t('common.actions'), dataIndex: 'actions' },
 ])
-function openEvent(event: GiftEvent, edit = false) {
-  void router.push({
-    name: 'gift-registry',
-    query: { eventId: event.id, ...(edit ? { edit: '1' } : {}) },
+function openEvent(event: GiftEvent) {
+  void router.push({ name: 'gift-registry', query: { eventId: event.id } })
+}
+async function editEvent(event: GiftEvent) {
+  if (!manager.canSave.value || manager.task.busy.value || config.task.busy.value) return
+  await manager.task.run(async () => {
+    selectedEvent.value = event
+    await settings.load()
+    if (settings.error.value) throw new Error(settings.error.value)
+    // Editing retains the saved display title and photo in the shared preview.
+    config.openEvent()
   })
 }
 </script>
@@ -148,8 +162,8 @@ function openEvent(event: GiftEvent, edit = false) {
                   v-if="manager.canSave.value"
                   :label="t('gift.editEvent')"
                   :icon="EditOutlined"
-                  :disabled="manager.task.busy.value"
-                  @action="openEvent(record, true)"
+                  :disabled="manager.task.busy.value || config.task.busy.value"
+                  @action="editEvent(record)"
                 />
                 <action-button
                   v-if="manager.canSave.value && record.description.trim()"

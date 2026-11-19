@@ -87,9 +87,11 @@ const policeRecordUrl = computed(
             :loading="busy || loading"
             :disabled="loading"
             >{{ t('common.login') }}</a-button
-          ><a-button block type="link" @click="registering = true">{{
-            t('auth.register')
-          }}</a-button
+          ><div class="login-registration">
+            <a-button type="link" @click="registering = true">{{
+              t('auth.registerLink')
+            }}</a-button>
+          </div
           ><a-button v-if="error" block class="retry-button" @click="prepare">{{
             t('common.retry')
           }}</a-button></a-form
@@ -224,6 +226,13 @@ const policeRecordUrl = computed(
 }
 .login-error {
   margin-bottom: 0;
+}
+.login-registration {
+  display: flex;
+  justify-content: flex-end;
+}
+.login-registration > .ant-btn {
+  padding-inline-end: 0;
 }
 .retry-button {
   margin-top: var(--space-3);

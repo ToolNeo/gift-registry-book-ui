@@ -2154,6 +2154,107 @@ test('activity management creates in place through the shared form and preserves
   await modal.getByRole('button', { name: '取消', exact: true }).click()
 })
 
+for (const width of [1280, 390]) {
+  test(`activity management edits in place and preserves filters and page (${width}px)`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    const state = await fixture(context)
+    for (let index = 0; index < 24; index++) {
+      const event = {
+        ...state.events[0]!,
+        id: `extra-${index}`,
+        name: `活动${index}`,
+        description: `活动资料${index}`,
+        version: index + 10,
+      }
+      state.events.push(event)
+      state.settings.set(event.id, { ...state.settings.get('a')!, title: event.name })
+    }
+    const original = { ...state.events[20]! }
+    state.settings.set(original.id, {
+      ...state.settings.get(original.id)!,
+      title: '独立展示标题',
+      photoDataUrl: photo,
+    })
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/gift-registry/events?keep=edit')
+    const query = page.locator('.gift-management-table .pro-query')
+    await query.locator('.query-value-container input').fill('活动')
+    await query.getByRole('button', { name: '搜索', exact: true }).click()
+    await page.locator('.ant-pagination-item-2').click()
+    const row = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: original.name, exact: true }),
+    })
+    await row.getByRole('button', { name: '活动设置', exact: true }).click()
+    const modal = page.getByRole('dialog')
+    await expect(page).toHaveURL(/\/gift-registry\/events\?keep=edit$/)
+    await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue(original.name)
+    await expect(modal.locator('textarea')).toHaveValue(original.description)
+    await expect(modal.getByLabel('活动日期', { exact: true })).toHaveValue(original.eventDate)
+    await expect(modal.getByRole('radio', { name: /结婚/ })).toBeChecked()
+    await expect(modal.locator('.gift-event-style-preview h1')).toHaveText('独立展示标题')
+    await expect(modal.locator('.gift-event-style-preview .gift-book-photo')).toHaveAttribute('src', photo)
+    await modal.getByLabel('活动名称', { exact: true }).fill('取消的修改')
+    await modal.getByRole('button', { name: '取消', exact: true }).click()
+    await expect(modal).not.toBeVisible()
+    expect(state.events[20]).toEqual(original)
+    expect(state.requests.filter((request) => request.method === 'PUT')).toHaveLength(0)
+    await expect(row).toContainText(original.name)
+
+    await row.getByRole('button', { name: '活动设置', exact: true }).click()
+    await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue(original.name)
+    await modal.getByLabel('活动名称', { exact: true }).fill(`${original.name}已修改`)
+    await modal.locator('textarea').fill('原地编辑保存的描述')
+    await modal.getByRole('radio', { name: /满月酒/ }).check()
+    await modal.getByLabel('活动日期', { exact: true }).click()
+    await page.locator('.ant-picker-dropdown:visible td[title="2026-10-20"]').click()
+    await page.screenshot({ path: testInfo.outputPath(`list-edit-${width}.png`) })
+    await modal.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(modal).not.toBeVisible()
+    await expectSuccessToast(page, '活动更新成功')
+    const write = state.requests.find((request) => request.method === 'PUT')
+    expect(write).toMatchObject({
+      path: `/gift-registry/events/${original.id}`,
+      body: {
+        name: `${original.name}已修改`,
+        description: '原地编辑保存的描述',
+        eventDate: '2026-10-20',
+        eventType: 'FULL_MOON',
+        status: original.status,
+        expectedVersion: original.version,
+      },
+    })
+    await expect(page).toHaveURL(/\/gift-registry\/events\?keep=edit$/)
+    await expect(query.locator('.query-value-container input')).toHaveValue('活动')
+    await expect(page.locator('.ant-pagination-item-2')).toHaveClass(/ant-pagination-item-active/)
+    await expect(
+      page.getByRole('navigation', { name: '一级菜单' })
+        .getByRole('menuitem', { name: '活动管理', exact: true }),
+    ).toHaveClass(/ant-menu-item-selected/)
+    expect(state.requests.filter((request) => request.path === '/gift-registry/events/_query').at(-1)?.body)
+      .toMatchObject({ pageIndex: 1, pageSize: 20, terms: [{ column: 'name', value: '%活动%' }] })
+    const updated = page.getByRole('row').filter({
+      has: page.getByRole('cell', { name: `${original.name}已修改`, exact: true }),
+    })
+    await updated.getByRole('button', { name: '活动设置', exact: true }).click()
+    await expect(modal.getByLabel('活动日期', { exact: true })).toHaveValue('2026-10-20')
+    await expect(modal.getByRole('radio', { name: /满月酒/ })).toBeChecked()
+    await modal.locator('textarea').fill('第二次修改')
+    await modal.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(modal).not.toBeVisible()
+    expect(state.requests.filter((request) => request.method === 'PUT').at(-1)?.body)
+      .toMatchObject({ expectedVersion: original.version + 1, description: '第二次修改' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+    expect(errors).toEqual([])
+    await updated.getByRole('button', { name: '打开礼簿', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/gift-registry\\?eventId=${original.id}$`))
+  })
+}
+
 test('activity management creates the first activity on a narrow screen', async ({
   page,
   context,
@@ -2259,7 +2360,7 @@ test('activity management separates close reopen and confirmed deletion while ke
     .getByRole('button', { name: '保存', exact: true })
     .click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
-  await page.goto('/gift-registry/events')
+  await expect(page).toHaveURL(/\/gift-registry\/events$/)
   for (const action of ['结束活动', '重新开启', '结束活动']) {
     const version = state.events[0]!.version
     await row.getByRole('button', { name: action, exact: true }).click()
