@@ -15,6 +15,7 @@ import {
   Button as AButton,
   ConfigProvider as AConfigProvider,
   Card as ACard,
+  DatePicker as ADatePicker,
   Descriptions as ADescriptions,
   DescriptionsItem as ADescriptionsItem,
   Empty as AEmpty,
@@ -112,6 +113,16 @@ const editor = useEntryEditor(eventId, async () => {
   await refresh()
 })
 const config = useEventSettings(event, settings, entries, loadEvents)
+/** Consume the list's create intent once, without waiting for an existing activity to load. */
+watch(
+  [() => route.query.create, canSave],
+  ([create, allowed]) => {
+    if (create !== '1' || !allowed) return
+    config.openEvent(true)
+    void router.replace({ query: { ...route.query, create: undefined } })
+  },
+  { immediate: true },
+)
 /** Activity management reuses this editor after selecting the requested event, including legacy details. */
 watch(event, (current) => {
   if (
@@ -636,8 +647,14 @@ async function copyDisplay() {
           name="eventDate"
           :label="t('gift.eventDate')"
           :rules="[{ required: true, message: t('common.required') }]"
-          ><a-input v-model:value="config.eventDraft.eventDate" type="date"
-        /></a-form-item>
+        >
+          <a-date-picker
+            v-model:value="config.eventDraft.eventDate"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </a-form-item>
         <section
           v-if="config.eventDraft.eventType"
           class="gift-event-preview-section"

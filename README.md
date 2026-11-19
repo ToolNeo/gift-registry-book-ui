@@ -1,14 +1,10 @@
-[测试地址：https://gift.vyide.com](https://gift.vyide.com)
-
 # 电子礼簿 · Gift Registry Book UI
 
-面向婚丧喜庆、婴儿庆生、乔迁、升学及开业等场景的电子礼簿前端，提供现场礼金录入、活动管理和独立展示屏。录入人员在管理端登记，展示端通过只读链接打开，适合投屏到电视或大屏。
+面向婚丧喜庆、婴儿庆生、乔迁、升学及开业等场景的电子礼簿前端，提供现场礼金录入、活动管理和独立展示屏。录入人员在管理端登记，展示端通过只读链接打开，适合投屏到电视或大屏。演示地址：[https://gift.vyide.com](https://gift.vyide.com)，可自行注册账号体验。
 
-- [后端仓库](https://github.com/ToolNeo/gift-registry-book)
-- [礼簿接口说明](https://github.com/ToolNeo/gift-registry-book/blob/main/docs/gift-registry/API.md)
-- [账号与邮箱验证](https://github.com/ToolNeo/gift-registry-book/blob/main/docs/account-email-verification.md)
-
-后端仓库及接口文档需相应访问权限。
+```
+备注：注册完成后，请登录管理端，在电子礼簿中新建活动，选择活动类型并填写日期和描述。请放心体验，平台做了数据权限控制的，每个用户只能查看到自己创建的活动。
+```
 
 ## 主要功能
 

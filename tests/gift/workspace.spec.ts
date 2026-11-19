@@ -2037,6 +2037,156 @@ test('activity management menus and routes follow configured names paths visibil
   expect(errors).toEqual([])
 })
 
+test('activity management creates through the existing book form and consumes its route intent once', async ({
+  page,
+  context,
+}, testInfo) => {
+  const state = await fixture(context)
+  await page.goto('/gift-registry/events')
+  const create = page.getByRole('button', { name: '新建活动', exact: true })
+  await expect(create).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('list-create-desktop.png'),
+  })
+  await create.click()
+  const modal = page.getByRole('dialog')
+  await expect(modal.getByRole('radio')).toHaveCount(10)
+  await expect(page).toHaveURL(/\/gift-registry$/)
+  await modal.getByLabel('活动名称', { exact: true }).fill('取消的活动')
+  await modal.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(modal).not.toBeVisible()
+  expect(state.events).toHaveLength(2)
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: '电子礼簿', exact: true }),
+  ).toBeVisible()
+  await expect(modal).toHaveCount(0)
+
+  await page.goto('/gift-registry/events')
+  await create.click()
+  await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue('')
+  await modal.getByLabel('活动名称', { exact: true }).fill('列表新建满月酒')
+  await modal.getByRole('radio', { name: /满月酒/ }).check()
+  await modal.getByLabel('活动描述', { exact: true }).fill('亲友相聚，喜迎新生')
+  await expect(
+    modal.locator('.gift-event-style-preview .gift-book'),
+  ).toHaveAttribute('data-event-type', 'FULL_MOON')
+  const date = modal.getByLabel('活动日期', { exact: true })
+  expect(await date.getAttribute('type')).not.toBe('date')
+  const next = new Date(`${await date.inputValue()}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  const selectedDate = next.toISOString().slice(0, 10)
+  await date.click()
+  await page
+    .locator('.ant-picker-dropdown:visible')
+    .locator(`td[title="${selectedDate}"]`)
+    .click()
+  await expect(date).toHaveValue(selectedDate)
+  await date.hover()
+  await modal.locator('.ant-picker-clear').click()
+  await expect(date).toHaveValue('')
+  await modal.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(modal.locator('.ant-form-item-explain-error')).toBeVisible()
+  expect(state.events).toHaveLength(2)
+  await date.click()
+  await page
+    .locator('.ant-picker-dropdown:visible')
+    .locator(`td[title="${selectedDate}"]`)
+    .click()
+  await expect(date).toHaveValue(selectedDate)
+  await expect(page.locator('.ant-picker-dropdown:visible')).toHaveCount(0)
+  await page.screenshot({
+    path: testInfo.outputPath('list-create-form-desktop.png'),
+  })
+  await modal.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(modal).not.toBeVisible()
+  await expectSuccessToast(page, '活动新建成功')
+  await expect.poll(() => state.events.length).toBe(3)
+  expect(state.events.at(-1)).toMatchObject({
+    name: '列表新建满月酒',
+    eventType: 'FULL_MOON',
+    description: '亲友相聚，喜迎新生',
+    eventDate: selectedDate,
+  })
+  await page.goto('/gift-registry/events')
+  const row = page.getByRole('row').filter({
+    has: page.getByRole('cell', { name: '列表新建满月酒', exact: true }),
+  })
+  await row.getByRole('button', { name: '活动设置', exact: true }).click()
+  await expect(modal.getByLabel('活动名称', { exact: true })).toHaveValue(
+    '列表新建满月酒',
+  )
+  await expect(modal.getByLabel('活动日期', { exact: true })).toHaveValue(
+    selectedDate,
+  )
+  await modal.getByRole('button', { name: '取消', exact: true }).click()
+
+  await page.goto('/gift-registry?create=1&keep=1')
+  await expect(modal.getByRole('radio')).toHaveCount(10)
+  await expect(page).toHaveURL(/\/gift-registry\?keep=1$/)
+  await modal.getByRole('button', { name: '取消', exact: true }).click()
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: '电子礼簿', exact: true }),
+  ).toBeVisible()
+  await expect(modal).toHaveCount(0)
+})
+
+test('activity management creates the first activity on a narrow screen', async ({
+  page,
+  context,
+}, testInfo) => {
+  const state = await fixture(context)
+  state.events.splice(0)
+  state.settings.clear()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/gift-registry/events')
+  const create = page.getByRole('button', { name: '新建活动', exact: true })
+  await expect(create).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('list-create-mobile.png'),
+  })
+  await create.click()
+  const modal = page.getByRole('dialog')
+  await expect(modal.getByRole('radio')).toHaveCount(10)
+  await modal.getByLabel('活动名称', { exact: true }).fill('首场百天酒')
+  await modal.getByRole('radio', { name: /百天酒/ }).check()
+  await modal.getByLabel('活动描述', { exact: true }).fill('百日安康')
+  const date = modal.getByLabel('活动日期', { exact: true })
+  const next = new Date(`${await date.inputValue()}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  const selectedDate = next.toISOString().slice(0, 10)
+  await date.click()
+  await page
+    .locator('.ant-picker-dropdown:visible')
+    .locator(`td[title="${selectedDate}"]`)
+    .click()
+  await expect(date).toHaveValue(selectedDate)
+  await expect(
+    modal.locator('.gift-event-style-preview .gift-book'),
+  ).toHaveAttribute('data-event-type', 'HUNDRED_DAYS')
+  await expect(page.locator('.ant-picker-dropdown:visible')).toHaveCount(0)
+  await page.screenshot({
+    path: testInfo.outputPath('list-create-form-mobile.png'),
+  })
+  await modal.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(modal).not.toBeVisible()
+  await expectSuccessToast(page, '活动新建成功')
+  await expect.poll(() => state.events.length).toBe(1)
+  expect(state.events[0]).toMatchObject({
+    eventType: 'HUNDRED_DAYS',
+    eventDate: selectedDate,
+  })
+  await expect(
+    page.locator('.gift-event-picker .ant-select-selection-item'),
+  ).toContainText('首场百天酒')
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+})
+
 test('activity management separates close reopen and confirmed deletion while keeping the book creation entry', async ({
   page,
   context,
@@ -2154,7 +2304,7 @@ test('activity management query-only access exposes no state or delete controls'
   await expect(
     page.getByRole('heading', { name: '活动管理', exact: true }),
   ).toBeVisible()
-  for (const name of ['结束活动', '重新开启', '删除', '活动设置'])
+  for (const name of ['新建活动', '结束活动', '重新开启', '删除', '活动设置'])
     await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0)
   await expect(
     page.getByRole('button', { name: '打开礼簿', exact: true }),
@@ -2231,6 +2381,20 @@ test('activity management query-only access exposes no state or delete controls'
   expect(
     state.requests.some(
       (request) => request.method === 'PUT' || request.method === 'DELETE',
+    ),
+  ).toBe(false)
+  await page.goto('/gift-registry?create=1')
+  await expect(
+    page.getByRole('heading', { name: '电子礼簿', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: '新建活动', exact: true }),
+  ).toHaveCount(0)
+  expect(
+    state.requests.some(
+      (request) =>
+        request.method === 'POST' && request.path === '/gift-registry/events',
     ),
   ).toBe(false)
 })
