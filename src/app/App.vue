@@ -8,6 +8,8 @@ import {
 } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import enUS from 'ant-design-vue/es/locale/en_US'
+// DatePicker reads month and weekday names from Dayjs in addition to the Ant locale.
+import 'dayjs/locale/zh-cn'
 import { RouterView } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { theme } from './providers/theme'
