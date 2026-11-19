@@ -276,6 +276,52 @@ describe('event types, drafts and reusable display credentials', () => {
     expect(saved).toHaveBeenCalledExactlyOnceWith(locales.zh.updatedEvent)
   })
 
+  it.each([
+    'FULL_MOON',
+    'HUNDRED_DAYS',
+    'FIRST_BIRTHDAY',
+    'ENGAGEMENT',
+    'HOUSEWARMING',
+    'GRADUATION',
+    'BUSINESS_OPENING',
+  ] as const)(
+    'keeps %s through create, preview, edit and backup preflight',
+    async (eventType) => {
+      const { config, event } = setup()
+      config.openEvent(true)
+      Object.assign(config.eventDraft, {
+        name: '新活动',
+        description: '亲友相聚',
+        eventType,
+      })
+      expect(config.eventPreview.value.event.eventType).toBe(eventType)
+      await config.saveEvent()
+      expect(giftApi.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType }),
+      )
+      event.value = { ...base, eventType, description: '亲友相聚' }
+      config.openEvent()
+      expect(config.eventDraft.eventType).toBe(eventType)
+      await config.saveEvent()
+      expect(giftApi.updateEvent).toHaveBeenCalledWith(
+        'a',
+        expect.objectContaining({ eventType }),
+      )
+      const payload = {
+        schemaVersion: 2,
+        event: event.value,
+        settings: {},
+        entries: [],
+        audits: [],
+      }
+      const bundle = await readBackup({
+        size: 100,
+        text: async () => JSON.stringify(payload),
+      } as File)
+      expect(bundle.event.eventType).toBe(eventType)
+    },
+  )
+
   it('reuses the full link after reopening settings and recreating the hook without issuing or rotating again', async () => {
     const first = setup().config
     first.openDisplay()

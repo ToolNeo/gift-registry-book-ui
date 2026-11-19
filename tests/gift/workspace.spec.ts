@@ -168,7 +168,18 @@ async function fixture(
     }
     if (path === '/gift-registry/events' && method === 'POST') {
       if (
-        !['WEDDING', 'FUNERAL', 'BIRTHDAY'].includes(body.eventType) ||
+        ![
+          'WEDDING',
+          'FUNERAL',
+          'BIRTHDAY',
+          'FULL_MOON',
+          'HUNDRED_DAYS',
+          'FIRST_BIRTHDAY',
+          'ENGAGEMENT',
+          'HOUSEWARMING',
+          'GRADUATION',
+          'BUSINESS_OPENING',
+        ].includes(body.eventType) ||
         !body.description?.trim() ||
         body.description.trim().length > 1024
       )
@@ -978,12 +989,13 @@ test('manual WeChat, exact totals, independent attendance, scoped duplicate warn
   ).toBe(false)
 })
 
-test('required event presets preview and render wedding, funeral and longevity books with bundled handwriting', async ({
+test('required event presets preview and render all ten event styles with bundled handwriting', async ({
   page,
   context,
 }, testInfo) => {
   const state = await fixture(context)
   await page.goto('/gift-registry')
+  test.setTimeout(180000)
   const presets = [
     { type: 'WEDDING', name: '结婚', label: '贺礼', color: 'rgb(142, 38, 48)' },
     {
@@ -998,10 +1010,66 @@ test('required event presets preview and render wedding, funeral and longevity b
       label: '寿礼',
       color: 'rgb(155, 43, 32)',
     },
+    {
+      type: 'FULL_MOON',
+      name: '满月酒',
+      label: '贺礼',
+      color: 'rgb(248, 216, 210)',
+    },
+    {
+      type: 'HUNDRED_DAYS',
+      name: '百天酒',
+      label: '贺礼',
+      color: 'rgb(247, 227, 190)',
+    },
+    {
+      type: 'FIRST_BIRTHDAY',
+      name: '周岁宴',
+      label: '贺礼',
+      color: 'rgb(185, 71, 45)',
+    },
+    {
+      type: 'ENGAGEMENT',
+      name: '订婚宴',
+      label: '贺礼',
+      color: 'rgb(136, 49, 78)',
+    },
+    {
+      type: 'HOUSEWARMING',
+      name: '乔迁宴',
+      label: '贺礼',
+      color: 'rgb(31, 90, 82)',
+    },
+    {
+      type: 'GRADUATION',
+      name: '升学宴',
+      label: '贺礼',
+      color: 'rgb(36, 63, 103)',
+    },
+    {
+      type: 'BUSINESS_OPENING',
+      name: '开业庆典',
+      label: '贺礼',
+      color: 'rgb(165, 38, 37)',
+    },
   ]
   for (const [index, preset] of presets.entries()) {
+    await page.setViewportSize({
+      width: preset.type === 'FULL_MOON' ? 390 : 1280,
+      height: 844,
+    })
     await page.getByRole('button', { name: '新建活动', exact: true }).click()
     const modal = page.getByRole('dialog')
+    await expect(modal.getByRole('radio')).toHaveCount(10)
+    expect(
+      await modal.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: testInfo.outputPath(`event-types-${preset.type.toLowerCase()}.png`),
+      fullPage: false,
+    })
     await expect(modal.getByRole('radio', { checked: true })).toHaveCount(0)
     await modal
       .getByLabel('活动名称', { exact: true })

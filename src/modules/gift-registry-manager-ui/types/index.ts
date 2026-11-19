@@ -1,6 +1,16 @@
 export type PaymentMethod = 'CASH' | 'WECHAT'
 export type EntryStatus = 'VALID' | 'VOID'
-export type EventType = 'WEDDING' | 'FUNERAL' | 'BIRTHDAY'
+export type EventType =
+  | 'WEDDING'
+  | 'FUNERAL'
+  | 'BIRTHDAY'
+  | 'FULL_MOON'
+  | 'HUNDRED_DAYS'
+  | 'FIRST_BIRTHDAY'
+  | 'ENGAGEMENT'
+  | 'HOUSEWARMING'
+  | 'GRADUATION'
+  | 'BUSINESS_OPENING'
 
 export interface GiftEvent {
   id: string
