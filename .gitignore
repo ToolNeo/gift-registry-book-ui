@@ -1,0 +1,24 @@
+# Dependencies and build output
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Local IDE, operating-system and task state
+.idea/
+.vscode/
+.DS_Store
+.tasks/
+.playwright-mcp/
+
+# Test and runtime artifacts
+test-results/
+playwright-report/
+*.log
+*.pid

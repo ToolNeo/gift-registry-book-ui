@@ -1,0 +1,14 @@
+/* Keep only layout constraints; management inherits the system theme and component styles. */
+.gift-management-page {
+  min-width: 0;
+}
+
+.gift-management-modal .ant-input-number,
+.gift-management-modal .ant-select {
+  width: 100%;
+}
+
+.gift-management-modal .ant-modal-body {
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+}
