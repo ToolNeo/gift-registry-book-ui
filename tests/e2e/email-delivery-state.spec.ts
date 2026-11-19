@@ -65,8 +65,11 @@ for (const width of [1280, 390]) {
     await page.clock.fastForward(61000)
     await expect(modal.getByRole('status')).toContainText('请勿重复发送')
     await expect(page.getByText('网络连接失败', { exact: true })).toHaveCount(0)
-    await expect(page.locator('.ant-message').getByText('验证码已发送，请查收邮箱', { exact: true })).toHaveCount(0)
+    await expect(
+      page.locator('.ant-message').getByText('验证码已发送，请查收邮箱', { exact: true }),
+    ).toHaveCount(0)
     expect(sends).toBe(1)
+    await expect(modal.getByLabel('图形验证码', { exact: true })).toHaveValue('A2BCD')
     expect(await modal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
     await page.screenshot({
       path: test.info().outputPath(`sending-${width}.png`),
@@ -78,5 +81,6 @@ for (const width of [1280, 390]) {
     await expect(modal.getByRole('button', { name: /秒后重发$/ })).toBeDisabled()
     await expect(page.locator('.ant-message')).toContainText('验证码已发送，请查收邮箱')
     expect(sends).toBe(1)
+    await expect(modal.getByLabel('图形验证码', { exact: true })).toHaveValue('A2BCD')
   })
 }

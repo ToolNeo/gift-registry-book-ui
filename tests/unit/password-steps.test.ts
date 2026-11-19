@@ -140,6 +140,8 @@ describe('password step boundaries', () => {
         newPassword: next,
         challengeId: 'password-code',
         code: '012345',
+        verifyKey: 'image-key',
+        verifyCode: 'A2BCD',
       },
       expect.objectContaining({ silent: true }),
     )

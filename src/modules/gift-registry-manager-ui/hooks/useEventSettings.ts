@@ -13,6 +13,14 @@ import type {
   EventType,
 } from '../types'
 
+export interface EventDraft {
+  name: string
+  eventDate: string
+  eventType: EventType | null
+  description: string
+  status: GiftEvent['status']
+}
+
 /** Isolate configuration drafts and file handling from the registration workspace. */
 export function useEventSettings(
   event: Ref<GiftEvent | undefined>,
@@ -26,14 +34,13 @@ export function useEventSettings(
   const creating = ref(false)
   const previewOpen = ref(false)
   const displayLink = ref('')
-  const previewSource = ref<'event' | 'display'>('display')
   const issuedLinks = new Map<string, string>()
-  const eventDraft = reactive({
+  const eventDraft = reactive<EventDraft>({
     name: '',
     eventDate: '',
-    eventType: null as EventType | null,
+    eventType: null,
     description: '',
-    status: 'ACTIVE' as GiftEvent['status'],
+    status: 'ACTIVE',
   })
   const settingsDraft = reactive({
     title: '',
@@ -91,11 +98,7 @@ export function useEventSettings(
     pageIndex: 0,
     pageSize: 6,
   }))
-  const preview = computed(() =>
-    previewSource.value === 'event' ? eventPreview.value : displayPreview.value,
-  )
-  function openPreview(source: 'event' | 'display') {
-    previewSource.value = source
+  function openPreview() {
     previewOpen.value = true
   }
 
@@ -252,7 +255,7 @@ export function useEventSettings(
     displayOpen,
     creating,
     previewOpen,
-    preview,
+    preview: displayPreview,
     eventPreview,
     openPreview,
     eventDraft,

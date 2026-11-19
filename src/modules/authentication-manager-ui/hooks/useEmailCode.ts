@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import type {
   EmailCodeChallenge,
   EmailCaptchaProof,
@@ -13,6 +13,7 @@ import { saved } from '@/shared/utils/feedback'
 /** One form owns its challenge; closing or changing its email invalidates every pending response. */
 export function useEmailCode(
   sender: (signal: AbortSignal, captcha: EmailCaptchaProof) => Promise<EmailCodeChallenge>,
+  options: { bindCaptcha?: boolean } = {},
 ) {
   const captcha = useEmailCaptcha()
   const challengeId = ref(''),
@@ -22,7 +23,9 @@ export function useEmailCode(
     busy = ref(false),
     pending = ref(false),
     error = ref('')
-  let pendingDelivery: EmailCodeChallenge | undefined
+  let pendingDelivery: EmailCodeChallenge | undefined,
+    boundImageKey = '',
+    usedImageKey = ''
   let generation = 0,
     disposed = false,
     expiresAt = 0,
@@ -39,6 +42,8 @@ export function useEmailCode(
     busy.value = false
     pending.value = false
     pendingDelivery = undefined
+    boundImageKey = ''
+    // Email/password edits discard email proof; only an image change clears its spent marker.
   }
   function cooldown(seconds: number) {
     clearInterval(timer)
@@ -53,6 +58,18 @@ export function useEmailCode(
     tick()
     if (remaining.value) timer = setInterval(tick, 1000)
   }
+  watch(
+    () => captcha.image.value.key,
+    (key) => {
+      if (key !== usedImageKey) usedImageKey = ''
+      if (!boundImageKey || key === boundImageKey) return
+      // Refreshing the bound image invalidates its email proof, but cannot bypass resend cooldown.
+      const seconds = remaining.value
+      reset()
+      cooldown(seconds)
+    },
+    { flush: 'sync' },
+  )
   function pause(signal: AbortSignal) {
     return new Promise<void>((resolve, reject) => {
       const abort = () => {
@@ -113,22 +130,36 @@ export function useEmailCode(
   }
   async function send() {
     if (disposed || busy.value || remaining.value > 0) return
+    if (
+      options.bindCaptcha &&
+      usedImageKey === captcha.image.value.key &&
+      usedImageKey &&
+      !pendingDelivery
+    ) {
+      error.value = t('auth.refreshCaptchaToResend')
+      return
+    }
     const version = ++generation,
       controller = new AbortController()
     active = controller
     busy.value = true
     error.value = ''
-    let attempted = false
+    let attempted = false,
+      accepted = false,
+      uncertain = false
     const current = () => !disposed && version === generation && !controller.signal.aborted
     try {
       let ticket = pendingDelivery
       if (!ticket) {
         const imageProof = captcha.proof()
         // A validated image is single-use at the server, even when SMTP delivery fails.
-        attempted = true
         challengeId.value = code.value = maskedEmail.value = ''
         expiresAt = 0
-        ticket = await sender(controller.signal, imageProof)
+        const sending = sender(controller.signal, imageProof)
+        attempted = true
+        if (options.bindCaptcha) boundImageKey = usedImageKey = imageProof.verifyKey
+        ticket = await sending
+        accepted = true
       }
       if (!current()) return
       const result = await delivered(ticket, controller.signal)
@@ -141,6 +172,7 @@ export function useEmailCode(
     } catch (cause) {
       if (current() && !(cause instanceof ApiError && cause.cancelled)) {
         if (cause instanceof ApiError && cause.status === 0 && !pendingDelivery) {
+          uncertain = true
           error.value = t('auth.emailDeliveryUnknown')
           cooldown(60)
         } else error.value = cause instanceof Error ? cause.message : t('common.unknown')
@@ -149,7 +181,12 @@ export function useEmailCode(
       if (current()) {
         busy.value = false
         active = undefined
-        if (attempted) await captcha.load()
+        // Registration/password keep the accepted image for final joint verification.
+        // A rejected send consumed its image and needs a fresh challenge before retrying.
+        if (attempted && (!options.bindCaptcha || (!accepted && !uncertain))) {
+          boundImageKey = ''
+          await captcha.load()
+        }
       }
     }
   }

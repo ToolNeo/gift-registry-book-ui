@@ -2,7 +2,7 @@ import { onBeforeUnmount, ref } from 'vue'
 import { registrationApi } from '@/modules/authentication-manager-ui/api/auth/registration'
 import { t } from '@/shared/i18n'
 
-/** Image challenges belong to one open form; refreshing never clears its delivered email proof. */
+/** Image challenges belong to one open form; callers decide whether email proof binds this image. */
 export function useEmailCaptcha() {
   const image = ref({ key: '', base64: '' }),
     answer = ref(''),

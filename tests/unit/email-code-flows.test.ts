@@ -126,6 +126,8 @@ describe('verified email account flows', () => {
     expect(state.emailCode.challengeId.value).toBe('challenge-1')
     expect(state.emailCode.remaining.value).toBe(60)
     expect(state.emailCode.pending.value).toBe(false)
+    expect(state.emailCode.captcha.image.value.key).toBe('image-key')
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
     expect(saved).toHaveBeenCalledOnce()
   })
 
@@ -142,6 +144,7 @@ describe('verified email account flows', () => {
     expect(state.emailCode.error.value).toBe(i18n.global.t('auth.emailDeliveryUnknown'))
     expect(state.emailCode.pending.value).toBe(true)
     expect(state.emailCode.busy.value).toBe(false)
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
     expect(saved).not.toHaveBeenCalled()
     vi.mocked(publicRequest.get).mockResolvedValue(response({ status: 'SENT', expiresIn: 240 }))
     const checking = state.sendCode()
@@ -220,6 +223,8 @@ describe('verified email account flows', () => {
         password: ' Newpassword123 ',
         challengeId: 'challenge-1',
         code: '012345',
+        verifyKey: 'image-key',
+        verifyCode: 'A2BCD',
       },
       { silent: true },
     )
@@ -265,6 +270,17 @@ describe('verified email account flows', () => {
     expect(publicRequest.post).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(60000)
     expect(state.emailCode.remaining.value).toBe(0)
+    await state.sendCode()
+    expect(publicRequest.post).toHaveBeenCalledTimes(1)
+    expect(state.emailCode.challengeId.value).toBe('challenge-1')
+    expect(state.emailCode.code.value).toBe('012345')
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
+    expect(state.error.value).toBe(i18n.global.t('auth.refreshCaptchaToResend'))
+    state.form.email = 'another@example.com'
+    await state.sendCode()
+    expect(publicRequest.post).toHaveBeenCalledTimes(1)
+    expect(state.error.value).toBe(i18n.global.t('auth.refreshCaptchaToResend'))
+    await state.emailCode.captcha.load()
     vi.mocked(publicRequest.post).mockResolvedValueOnce(response(challenge('challenge-2')))
     await send(state)
     expect(state.emailCode.challengeId.value).toBe('challenge-2')
@@ -284,6 +300,7 @@ describe('verified email account flows', () => {
     const pending = deferred<ReturnType<typeof response<ReturnType<typeof challenge>>>>()
     vi.mocked(publicRequest.post).mockReturnValueOnce(pending.promise)
     state.form.email = 'next@example.com'
+    await state.emailCode.captcha.load()
     const sending = send(state)
     const signal = vi.mocked(publicRequest.post).mock.calls.at(-1)![2]!.signal!
     wrapper.unmount()
@@ -397,6 +414,8 @@ describe('verified email account flows', () => {
         newPassword: 'Newpassword123',
         challengeId: 'challenge-1',
         code: '654321',
+        verifyKey: 'image-key',
+        verifyCode: 'A2BCD',
       },
       { silent: true },
     )
@@ -406,6 +425,63 @@ describe('verified email account flows', () => {
 })
 
 describe('image captcha and registration username boundaries', () => {
+  it('preserves the accepted image and submits the current answer again with the email code', async () => {
+    const { state } = registration()
+    await send(state)
+    expect(publicRequest.get).not.toHaveBeenCalled()
+    expect(state.emailCode.captcha.image.value.key).toBe('image-key')
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
+    state.emailCode.code.value = '012345'
+    state.emailCode.captcha.answer.value = ''
+    await state.submit()
+    expect(publicRequest.post).toHaveBeenCalledTimes(1)
+    state.emailCode.captcha.answer.value = ' current-answer '
+    await state.submit()
+    expect(publicRequest.post).toHaveBeenLastCalledWith(
+      '/authorize/register',
+      expect.objectContaining({
+        challengeId: 'challenge-1',
+        code: '012345',
+        verifyKey: 'image-key',
+        verifyCode: 'current-answer',
+      }),
+      { silent: true },
+    )
+  })
+
+  it('does not clear an image after local validation or an uncertain send response', async () => {
+    const { state } = registration()
+    state.form.email = 'invalid'
+    await send(state)
+    expect(publicRequest.post).not.toHaveBeenCalled()
+    expect(publicRequest.get).not.toHaveBeenCalled()
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
+    state.form.email = 'person@example.com'
+    vi.mocked(publicRequest.post).mockRejectedValueOnce(new ApiError('Network failure', 0))
+    await state.sendCode()
+    expect(state.emailCode.captcha.answer.value).toBe('A2BCD')
+    expect(state.emailCode.captcha.image.value.key).toBe('image-key')
+    expect(state.emailCode.remaining.value).toBe(60)
+    expect(publicRequest.get).not.toHaveBeenCalled()
+  })
+
+  it('ignores old send responses after the bound image is refreshed', async () => {
+    const { state } = registration()
+    const pending = deferred<ReturnType<typeof response<ReturnType<typeof challenge>>>>()
+    vi.mocked(publicRequest.post).mockReturnValueOnce(pending.promise)
+    const sending = send(state)
+    const signal = vi.mocked(publicRequest.post).mock.calls[0]![2]!.signal!
+    await state.emailCode.captcha.load()
+    state.emailCode.captcha.answer.value = 'NEW'
+    pending.resolve(response(challenge('old-challenge')))
+    await sending
+    expect(signal.aborted).toBe(true)
+    expect(state.emailCode.challengeId.value).toBe('')
+    expect(state.emailCode.captcha.image.value.key).toBe('next-image')
+    expect(state.emailCode.captcha.answer.value).toBe('NEW')
+    expect(saved).not.toHaveBeenCalled()
+  })
+
   it('never sends email without image proof and refreshes a consumed image after server rejection', async () => {
     const { state } = registration()
     await state.sendCode()
@@ -431,23 +507,21 @@ describe('image captcha and registration username boundaries', () => {
     expect(publicRequest.post).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps delivered email proof when image refresh fails, then recovers independently', async () => {
+  it('invalidates bound email proof on image refresh even if refreshing fails, without bypassing cooldown', async () => {
     const { state } = registration()
     await send(state)
     state.emailCode.code.value = '012345'
     vi.mocked(publicRequest.get).mockRejectedValueOnce(new Error('Network unavailable'))
     await state.emailCode.captcha.load()
     expect(state.emailCode.captcha.error.value).toBe(i18n.global.t('auth.imageCaptchaFailed'))
-    expect(state.emailCode.challengeId.value).toBe('challenge-1')
-    expect(state.emailCode.code.value).toBe('012345')
+    expect(state.emailCode.challengeId.value).toBe('')
+    expect(state.emailCode.code.value).toBe('')
+    expect(state.emailCode.remaining.value).toBe(60)
     await state.emailCode.captcha.load()
     expect(state.emailCode.captcha.error.value).toBe('')
     await state.submit()
-    expect(publicRequest.post).toHaveBeenLastCalledWith(
-      '/authorize/register',
-      expect.objectContaining({ challengeId: 'challenge-1', code: '012345' }),
-      { silent: true },
-    )
+    expect(state.error.value).toBe(i18n.global.t('auth.sendCodeFirst'))
+    expect(publicRequest.post).toHaveBeenCalledTimes(1)
   })
 
   it('ignores late image responses after refresh, closing or unmounting', async () => {

@@ -24,7 +24,7 @@ export interface EmailDeliveryStatus {
   expiresIn: number
 }
 
-export interface RegistrationInput {
+export interface RegistrationInput extends EmailCaptchaProof {
   username: string
   name: string
   password: string

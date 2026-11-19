@@ -1,9 +1,11 @@
+import type { EmailCaptchaProof } from './auth'
+
 export interface AvatarCrop {
   zoom: number
   horizontal: number
   vertical: number
 }
-export interface PasswordChangeInput {
+export interface PasswordChangeInput extends EmailCaptchaProof {
   oldPassword: string
   newPassword: string
   challengeId: string
