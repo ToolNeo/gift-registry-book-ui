@@ -72,11 +72,22 @@ function openEvent(event: GiftEvent, edit = false) {
       class="gift-management-page"
       :title="t('gift.manageEvents')"
     >
-      <template #actions
-        ><a-button @click="router.push({ name: 'gift-registry' })">{{
-          t('gift.title')
-        }}</a-button></template
-      >
+      <template #actions>
+        <a-space wrap>
+          <a-button
+            v-if="manager.canSave.value"
+            :disabled="manager.task.busy.value"
+            @click="
+              router.push({ name: 'gift-registry', query: { create: '1' } })
+            "
+          >
+            {{ t('gift.newEvent') }}
+          </a-button>
+          <a-button @click="router.push({ name: 'gift-registry' })">{{
+            t('gift.title')
+          }}</a-button>
+        </a-space>
+      </template>
       <div class="panel stack gift-management-table">
         <pro-query
           :fields="queryFields"
