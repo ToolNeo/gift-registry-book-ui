@@ -926,7 +926,7 @@ async function copyDisplay() {
 <style scoped>
 .gift-preset-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-3);
   width: 100%;
 }
@@ -946,6 +946,34 @@ async function copyDisplay() {
 .gift-preset-card--funeral {
   background: #f8f9f5;
   color: #3e4a41;
+}
+.gift-preset-card--full_moon {
+  background: #f8d8d2;
+  color: #6f2a3f;
+}
+.gift-preset-card--hundred_days {
+  background: #f7e3be;
+  color: #684425;
+}
+.gift-preset-card--first_birthday {
+  background: #b9472d;
+  color: #fff0bf;
+}
+.gift-preset-card--engagement {
+  background: #88314e;
+  color: #ffe4cf;
+}
+.gift-preset-card--housewarming {
+  background: #1f5a52;
+  color: #fff0bf;
+}
+.gift-preset-card--graduation {
+  background: #243f67;
+  color: #fff0c2;
+}
+.gift-preset-card--business_opening {
+  background: #a52625;
+  color: #ffecb0;
 }
 .gift-preset-card.ant-radio-wrapper-checked {
   outline: 2px solid currentColor;
@@ -1147,7 +1175,13 @@ async function copyDisplay() {
 }
 @media (width <= 700px) {
   .gift-preset-options {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gift-preset-card {
+    padding: var(--space-3);
+  }
+  .gift-preset-swatch {
+    font-size: 32px;
   }
   .gift-event-picker {
     width: 100%;

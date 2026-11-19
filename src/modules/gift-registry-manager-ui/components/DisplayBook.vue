@@ -277,6 +277,62 @@ onBeforeUnmount(() => {
   --book-panel: #f0f1eb;
   --book-panel-ink: #38443c;
 }
+.gift-book--full_moon {
+  --book-rule: #ac6971;
+  --book-paper: #f8d8d2;
+  --book-ink: #6f2a3f;
+  --book-accent: #ac6971;
+  --book-panel: #edb4b1;
+  --book-panel-ink: #69273b;
+}
+.gift-book--hundred_days {
+  --book-rule: #a67a36;
+  --book-paper: #f7e3be;
+  --book-ink: #684425;
+  --book-accent: #a67a36;
+  --book-panel: #edcd93;
+  --book-panel-ink: #65401f;
+}
+.gift-book--first_birthday {
+  --book-rule: #e2b05b;
+  --book-paper: #b9472d;
+  --book-ink: #fff0bf;
+  --book-accent: #e2b05b;
+  --book-panel: #893522;
+  --book-panel-ink: #fff0bf;
+}
+.gift-book--engagement {
+  --book-rule: #dca597;
+  --book-paper: #88314e;
+  --book-ink: #ffe4cf;
+  --book-accent: #dca597;
+  --book-panel: #65223b;
+  --book-panel-ink: #ffe4cf;
+}
+.gift-book--housewarming {
+  --book-rule: #c6ab68;
+  --book-paper: #1f5a52;
+  --book-ink: #fff0bf;
+  --book-accent: #c6ab68;
+  --book-panel: #16443d;
+  --book-panel-ink: #fff0bf;
+}
+.gift-book--graduation {
+  --book-rule: #c5a568;
+  --book-paper: #243f67;
+  --book-ink: #fff0c2;
+  --book-accent: #c5a568;
+  --book-panel: #192e4e;
+  --book-panel-ink: #fff0c2;
+}
+.gift-book--business_opening {
+  --book-rule: #ddb04c;
+  --book-paper: #a52625;
+  --book-ink: #ffecb0;
+  --book-accent: #ddb04c;
+  --book-panel: #7a1d1c;
+  --book-panel-ink: #ffecb0;
+}
 .gift-book-event {
   display: flex;
   flex-direction: column;
