@@ -42,6 +42,7 @@ import {
 import type { TableColumnsType } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import PageContainer from '@/shared/components/PageContainer.vue'
+import TextEllipsis from '@/shared/components/TextEllipsis.vue'
 import FormModal from '@/shared/components/FormModal.vue'
 import LoadState from '@/shared/components/LoadState.vue'
 import DataTable from '@/shared/components/DataTable.vue'
@@ -171,6 +172,16 @@ const queryFields = computed<QueryField[]>(() => [
 const columns = computed<TableColumnsType<GiftEntry>>(() => [
   { title: t('gift.sequence'), dataIndex: 'seq', width: 80 },
   { title: t('gift.entryName'), dataIndex: 'name', width: 150 },
+  ...(entitlement.usage.data.value?.membership.state === 'EXEMPT'
+    ? [
+        {
+          title: t('gift.creatorName'),
+          dataIndex: 'creatorName',
+          width: 160,
+          ellipsis: { showTitle: false },
+        },
+      ]
+    : []),
   {
     title: t('gift.amount'),
     dataIndex: 'amountCents',
@@ -558,6 +569,10 @@ async function copyDisplay() {
                 <template v-if="column.dataIndex === 'amountCents'">{{
                   formatAmount(record.amountCents)
                 }}</template>
+                <text-ellipsis
+                  v-else-if="column.dataIndex === 'creatorName'"
+                  :text="record.creatorName || '--'"
+                />
                 <template v-else-if="column.dataIndex === 'paymentMethod'">{{
                   t(`gift.${record.paymentMethod}`)
                 }}</template>

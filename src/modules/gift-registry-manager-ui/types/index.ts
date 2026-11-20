@@ -14,6 +14,7 @@ export type EventType =
 
 export interface GiftEvent {
   id: string
+  creatorName?: string | null
   name: string
   eventDate: string
   eventType: EventType
@@ -26,6 +27,7 @@ export interface GiftEvent {
 
 export interface GiftEntry {
   id: string
+  creatorName?: string | null
   eventId: string
   seq: number
   name: string

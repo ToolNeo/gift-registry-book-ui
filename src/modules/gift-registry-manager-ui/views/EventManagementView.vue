@@ -63,17 +63,27 @@ const queryFields = computed<QueryField[]>(() => [
   },
 ])
 const columns = computed<TableColumnsType<GiftEvent>>(() => [
-  { title: t('gift.eventName'), dataIndex: 'name' },
-  { title: t('gift.eventType'), dataIndex: 'eventType' },
-  { title: t('gift.eventDate'), dataIndex: 'eventDate' },
-  { title: t('gift.eventStatus'), dataIndex: 'status' },
+  { title: t('gift.eventName'), dataIndex: 'name', width: 200 },
+  ...(entitlement.usage.data.value?.membership.state === 'EXEMPT'
+    ? [
+        {
+          title: t('gift.creatorName'),
+          dataIndex: 'creatorName',
+          width: 160,
+          ellipsis: { showTitle: false },
+        },
+      ]
+    : []),
+  { title: t('gift.eventType'), dataIndex: 'eventType', width: 160 },
+  { title: t('gift.eventDate'), dataIndex: 'eventDate', width: 140 },
+  { title: t('gift.eventStatus'), dataIndex: 'status', width: 110 },
   {
     title: t('gift.description'),
     dataIndex: 'description',
     width: 400,
     ellipsis: { showTitle: false },
   },
-  { title: t('common.actions'), dataIndex: 'actions' },
+  { title: t('common.actions'), dataIndex: 'actions', width: 180 },
 ])
 function openEvent(event: GiftEvent) {
   void router.push({ name: 'gift-registry', query: { eventId: event.id } })
@@ -168,6 +178,10 @@ async function editEvent(event: GiftEvent) {
                 t(record.status === 'ACTIVE' ? 'gift.active' : 'gift.closed')
               }}</a-tag
             >
+            <text-ellipsis
+              v-else-if="column.dataIndex === 'creatorName'"
+              :text="record.creatorName || '--'"
+            />
             <text-ellipsis
               v-else-if="column.dataIndex === 'description'"
               :text="record.description || '--'"
