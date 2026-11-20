@@ -124,6 +124,7 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
               <a-alert
                 type="info"
                 :message="t('membership.offlineHint')"
+                :description="t('membership.paymentDetailsHint')"
                 show-icon
               />
             </div>

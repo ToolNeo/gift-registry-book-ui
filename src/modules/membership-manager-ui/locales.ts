@@ -37,6 +37,8 @@ export const locales = {
     paymentPreview: '点击图片放大查看',
     offlineHint:
       '请向管理员核实线下微信收款信息。转款后提供用户名，由管理员核款并发放绑定本账号的授权码。',
+    paymentDetailsHint:
+      '授权码将发送至您填写的邮箱。付款时，请在“填写信息”中填写姓名、用户名和邮箱地址，否则无法发放授权码。',
     benefits:
       '有效期内不限新增活动和明细，支持明细导出、活动备份及恢复；仍需对应操作和数据权限。',
     fileLimits:
@@ -131,6 +133,8 @@ export const locales = {
     paymentPreview: 'Click the image to enlarge',
     offlineHint:
       'Confirm offline WeChat payment details with an administrator. After payment, provide your username to receive an account-bound authorization code.',
+    paymentDetailsHint:
+      'Your authorization code will be sent to the email address you provide. When paying, enter your name, username and email address in "Fill in information"; otherwise, an authorization code cannot be issued.',
     benefits:
       'Unlimited new activities and entries, plus detail export, activity backup and restore, subject to action and data permissions.',
     fileLimits:
