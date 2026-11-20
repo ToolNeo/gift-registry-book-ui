@@ -9,6 +9,7 @@ import { configureClient } from '@/shared/api/client'
 import { permissionKey } from '@/shared/auth/provider'
 import { localeMessages as authenticationMessages } from '@/modules/authentication-manager-ui'
 import { locales as giftLocales } from '@/modules/gift-registry-manager-ui'
+import { locales as membershipLocales } from '@/modules/membership-manager-ui'
 import { useSettings } from './stores/settings'
 import { useSession } from './stores/session'
 import { router } from './router'
@@ -22,6 +23,7 @@ for (const language of ['zh', 'en'] as const)
     ...authenticationMessages[language],
     layout: layoutLocales[language],
     gift: giftLocales[language],
+    membership: membershipLocales[language],
   })
 useSettings(pinia)
 const session = useSession(pinia)

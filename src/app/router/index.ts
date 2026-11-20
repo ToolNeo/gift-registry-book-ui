@@ -82,6 +82,13 @@ router.beforeEach(async (to) => {
       !session.can(to.meta.permission)
     )
       return '/403'
+    const membershipPermission: Record<string, string> = {
+      'membership/Center': 'membership:query',
+      'membership/Management': 'membership-admin:query',
+    }
+    const requiredMembership =
+      membershipPermission[String(to.meta.menuComponentCode)]
+    if (requiredMembership && !session.can(requiredMembership)) return '/403'
     return true
   } catch {
     return { path: '/login', query: { redirect: to.fullPath } }

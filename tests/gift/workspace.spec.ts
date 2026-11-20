@@ -1,6 +1,7 @@
 import { expect, test, type BrowserContext } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { ServerMenu } from '../../src/shared/auth/types'
+import project from '../../project.config.json' with { type: 'json' }
 import type {
   BackupBundle,
   DisplaySettings,
@@ -15,7 +16,7 @@ const photo =
 /** Browser fixtures exercise the real router/forms/HTTP clients while recording the frozen backend contract. */
 async function fixture(
   context: BrowserContext,
-  actions = ['query', 'save'],
+  actions = ['query', 'save', 'export', 'backup', 'restore'],
   menus: ServerMenu[] = [
     {
       id: 'configured-activity-management',
@@ -87,10 +88,10 @@ async function fixture(
     event.version++
     return entry
   }
-  await context.addInitScript(() => {
+  await context.addInitScript((namespace) => {
     if (window.location.origin === 'http://127.0.0.1:5189')
-      localStorage.setItem('proto-bridge-ui:token', 'management-token')
-  })
+      localStorage.setItem(`${namespace}:token`, 'management-token')
+  }, project.storageNamespace)
   await context.routeWebSocket(
     /\/api\/gift-registry\/display\/[^/]+\/live$/,
     (socket) => {
@@ -125,8 +126,44 @@ async function fixture(
         status: 1,
       })
     if (path === '/authorize/me')
-      return send({ permissions: [{ id: 'gift-registry', actions }] })
+      return send({
+        permissions: [
+          { id: 'gift-registry', actions },
+          { id: 'membership', actions: ['query', 'redeem'] },
+        ],
+      })
     if (path === '/menu/user-own/tree') return send(menus)
+    if (path === '/membership/me')
+      return send({
+        state: 'EXEMPT',
+        vip: false,
+        unlimited: true,
+        expiresAt: null,
+        serverTime: Date.now(),
+      })
+    if (path === '/membership/packages') return send([])
+    if (path === '/gift-registry/usage') {
+      const eventId = url.searchParams.get('eventId')
+      return send({
+        membership: {
+          state: 'EXEMPT',
+          vip: false,
+          unlimited: true,
+          expiresAt: null,
+          serverTime: Date.now(),
+        },
+        ownedActivityCount: events.length,
+        activityLimit: null,
+        canCreateEvent: true,
+        eventId,
+        entryCount: eventId
+          ? entries.filter((item) => item.eventId === eventId).length
+          : null,
+        entryLimit: null,
+        canCreateEntry: !!eventId,
+        ownerUnlimited: !!eventId,
+      })
+    }
     const history = path.match(
       /^\/user\/settings\/(gift-registry-(?:entries|events))(?:\/([^/]+))?$/,
     )
@@ -1788,7 +1825,7 @@ test('Excel export downloads a real xlsx for all applied filtered entries and ne
   page,
   context,
 }) => {
-  const state = await fixture(context, ['query'])
+  const state = await fixture(context, ['query', 'export'])
   for (let index = 1; index <= 25; index++)
     state.addEntry('a', {
       name: `导出宾客${String(index).padStart(2, '0')}`,

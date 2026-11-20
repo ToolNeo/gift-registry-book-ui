@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -28,6 +28,8 @@ import type { QueryField } from '@/shared/api/types'
 import { useResource } from '@/shared/composables/useResource'
 import { useEventManagement } from '../hooks/useEventManagement'
 import { useEventSettings } from '../hooks/useEventSettings'
+import { useGiftEntitlements } from '../hooks/useGiftEntitlements'
+import GiftQuotaNotice from '../components/GiftQuotaNotice.vue'
 import { giftApi } from '../api'
 import type { DisplaySettings, GiftEvent } from '../types'
 import '../gift-registry.css'
@@ -36,6 +38,8 @@ defineOptions({ name: 'GiftEventManagement' })
 const { t } = useI18n()
 const router = useRouter()
 const manager = useEventManagement()
+const entitlement = useGiftEntitlements(ref(''))
+watch(manager.rows, () => void entitlement.usage.load())
 const EventFormModal = defineAsyncComponent(
   () => import('../components/EventFormModal.vue'),
 )
@@ -96,7 +100,11 @@ async function editEvent(event: GiftEvent) {
         <a-space wrap>
           <a-button
             v-if="manager.canSave.value"
-            :disabled="manager.task.busy.value || config.task.busy.value"
+            :disabled="
+              manager.task.busy.value ||
+              config.task.busy.value ||
+              !entitlement.canCreateEvent.value
+            "
             @click="config.openEvent(true)"
           >
             {{ t('gift.newEvent') }}
@@ -106,6 +114,19 @@ async function editEvent(event: GiftEvent) {
           }}</a-button>
         </a-space>
       </template>
+      <gift-quota-notice
+        class="gift-management-quota"
+        :usage="entitlement.usage.data.value"
+        :error="entitlement.usage.error.value || entitlement.membership.error"
+        :loading="entitlement.usage.loading.value"
+        :center-path="entitlement.membership.centerPath"
+        :advanced="entitlement.membership.unlimited"
+        @refresh="entitlement.refresh"
+        @center="
+          entitlement.membership.centerPath &&
+          router.push(entitlement.membership.centerPath)
+        "
+      />
       <div class="panel stack gift-management-table">
         <pro-query
           :fields="queryFields"
@@ -243,6 +264,9 @@ async function editEvent(event: GiftEvent) {
 /* Keep the 720px table inside its own scroller instead of expanding the panel's grid track. */
 .gift-management-table {
   grid-template-columns: minmax(0, 1fr);
+}
+.gift-management-quota {
+  margin-bottom: var(--space-4);
 }
 .gift-management-table > * {
   min-width: 0;

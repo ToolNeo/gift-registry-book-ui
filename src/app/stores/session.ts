@@ -89,6 +89,16 @@ export const useSession = defineStore('session', () => {
     menusReady.value = false
     await initialize()
   }
+  /** Reload action grants after an entitlement change without clearing the authenticated session. */
+  async function refreshAuthorization() {
+    const epoch = generation
+    const auth = await sessionApi.authorization()
+    if (epoch !== generation)
+      throw new ApiError(t('common.sessionExpired'), 401)
+    resources = auth.permissions || []
+    permissions.value = permissionSet(menus.value, resources)
+    await refreshMenus()
+  }
   async function logout() {
     try {
       await sessionApi.logout()
@@ -105,6 +115,7 @@ export const useSession = defineStore('session', () => {
     menusReady,
     initialize,
     refreshMenus,
+    refreshAuthorization,
     login,
     logout,
     clear,

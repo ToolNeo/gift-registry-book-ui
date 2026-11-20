@@ -54,6 +54,8 @@ import EntryForm from '../components/EntryForm.vue'
 import { useWorkspace } from '../hooks/useWorkspace'
 import { useEntryEditor } from '../hooks/useEntryEditor'
 import { useEventSettings } from '../hooks/useEventSettings'
+import { useGiftEntitlements } from '../hooks/useGiftEntitlements'
+import GiftQuotaNotice from '../components/GiftQuotaNotice.vue'
 import { giftApi } from '../api'
 import { formatAmount } from '../utils/money'
 import '../gift-registry.css'
@@ -96,10 +98,12 @@ const {
   typeof route.query.eventId === 'string' ? route.query.eventId : undefined,
 )
 const editOpen = ref(false)
+const entitlement = useGiftEntitlements(eventId)
 
 /** A committed save clears its form first; refresh errors are reported independently from the write outcome. */
 async function saved() {
   await refresh()
+  await entitlement.usage.load()
   await nextTick()
   document
     .querySelector<HTMLInputElement>('[data-testid="entry-name"]')
@@ -110,7 +114,10 @@ const editor = useEntryEditor(eventId, async () => {
   editOpen.value = false
   await refresh()
 })
-const config = useEventSettings(event, settings, entries, loadEvents)
+const config = useEventSettings(event, settings, entries, async (id) => {
+  await loadEvents(id)
+  await entitlement.usage.load()
+})
 /** Activity management reuses this editor after selecting the requested event, including legacy details. */
 watch(event, (current) => {
   if (
@@ -352,24 +359,38 @@ async function copyDisplay() {
         <a-space wrap>
           <a-button
             v-if="canSave"
-            :disabled="locked"
+            :disabled="locked || !entitlement.canCreateEvent.value"
             @click="config.openEvent(true)"
             >{{ t('gift.newEvent') }}</a-button
           >
           <a-upload
-            v-if="canSave"
+            v-if="canSave && permissions.can('gift-registry:restore')"
             :show-upload-list="false"
             accept=".json,application/json"
             :before-upload="config.restore"
-            :disabled="locked"
+            :disabled="locked || !entitlement.canRestore.value"
           >
-            <a-button :disabled="locked" :loading="config.task.busy.value">{{
-              t('gift.restore')
-            }}</a-button>
+            <a-button
+              :disabled="locked || !entitlement.canRestore.value"
+              :loading="config.task.busy.value"
+              >{{ t('gift.restore') }}</a-button
+            >
           </a-upload>
         </a-space>
       </template>
       <div class="gift-workspace stack">
+        <gift-quota-notice
+          :usage="entitlement.usage.data.value"
+          :error="entitlement.usage.error.value || entitlement.membership.error"
+          :loading="entitlement.usage.loading.value"
+          :center-path="entitlement.membership.centerPath"
+          :advanced="entitlement.membership.unlimited"
+          @refresh="entitlement.refresh"
+          @center="
+            entitlement.membership.centerPath &&
+            router.push(entitlement.membership.centerPath)
+          "
+        />
         <div class="panel gift-event-bar">
           <div class="gift-event-picker">
             <label for="gift-event-select">{{ t('gift.event') }}</label
@@ -396,9 +417,12 @@ async function copyDisplay() {
               @click="config.openDisplay"
               >{{ t('gift.displaySettings') }}</a-button
             >
-            <a-button v-if="event" :disabled="locked" @click="config.backup">{{
-              t('gift.backup')
-            }}</a-button>
+            <a-button
+              v-if="event && permissions.can('gift-registry:backup')"
+              :disabled="locked || !entitlement.canBackup.value"
+              @click="config.backup"
+              >{{ t('gift.backup') }}</a-button
+            >
             <a-button
               :disabled="locked"
               :loading="eventLoading"
@@ -467,7 +491,10 @@ async function copyDisplay() {
             <entry-form
               :model="quick.draft"
               :busy="quick.saving.value"
-              :disabled="!selectedActive"
+              :disabled="
+                !selectedActive ||
+                (!entitlement.canCreateEntry.value && !quick.uncertain.value)
+              "
               :uncertain="quick.uncertain.value"
               :error="quick.error.value"
               :duplicates="quick.duplicates.value"
@@ -478,12 +505,25 @@ async function copyDisplay() {
           <a-card class="gift-ledger-card" :title="t('gift.entries')">
             <template #extra
               ><a-button
+                v-if="permissions.can('gift-registry:export')"
                 :loading="exportTask.busy.value"
-                :disabled="loading || eventLoading"
+                :disabled="
+                  loading || eventLoading || !entitlement.canExport.value
+                "
                 @click="exportEntries"
                 >{{ t('gift.exportEntries') }}</a-button
               ></template
             >
+            <p
+              v-if="
+                permissions.can('gift-registry:export') ||
+                permissions.can('gift-registry:backup') ||
+                permissions.can('gift-registry:restore')
+              "
+              class="muted"
+            >
+              {{ t('membership.fileLimits') }}
+            </p>
             <pro-query
               :key="eventId"
               :fields="queryFields"
