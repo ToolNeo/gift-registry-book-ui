@@ -114,3 +114,16 @@ export interface BackupBundle {
   entries: GiftEntry[]
   audits: EntryAudit[]
 }
+/** Server-owned quota counts include closed activities and voided entries. */
+export interface GiftUsage {
+  membership: MembershipStatus
+  ownedActivityCount: number
+  activityLimit: number | null
+  canCreateEvent: boolean
+  eventId: string | null
+  entryCount: number | null
+  entryLimit: number | null
+  canCreateEntry: boolean
+  ownerUnlimited: boolean
+}
+import type { MembershipStatus } from '@/modules/membership-manager-ui'

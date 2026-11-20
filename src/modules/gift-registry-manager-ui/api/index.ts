@@ -10,6 +10,7 @@ import type {
   GiftEntry,
   GiftEvent,
   GiftSummary,
+  GiftUsage,
 } from '../types'
 
 const root = '/gift-registry'
@@ -19,6 +20,14 @@ const entryPath = (eventId: string, id: string) =>
 
 /** Management requests share the platform identity; display credentials never enter this client. */
 export const giftApi = {
+  usage: async (eventId?: string, options?: RequestOptions) =>
+    (
+      await request.get<GiftUsage>(
+        `${root}/usage`,
+        eventId ? { eventId } : undefined,
+        options,
+      )
+    ).result,
   events: async (query: Query = {}, options?: RequestOptions) =>
     (
       await request.post<PageResult<GiftEvent>>(
