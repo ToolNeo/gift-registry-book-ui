@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { useSession } from '@/app/stores/session'
 import { adaptMenus } from '@/app/router/menu-adapter'
 import { splitNavigation, firstPage } from '@/app/router/navigation'
-import { withGiftMenu } from '@/modules/gift-registry-manager-ui'
 
 export function useNavigation() {
   const route = useRoute()
@@ -14,13 +13,7 @@ export function useNavigation() {
   const selectedRoot = ref<string>()
   const mobileOpen = ref(false)
   const collapsed = ref(false)
-  const links = computed(
-    () =>
-      adaptMenus(
-        withGiftMenu(session.menus, session.can('gift-registry:query')),
-        locale.value,
-      ).links,
-  )
+  const links = computed(() => adaptMenus(session.menus, locale.value).links)
   const navigation = computed(() =>
     splitNavigation(links.value, route.path, selectedRoot.value),
   )
