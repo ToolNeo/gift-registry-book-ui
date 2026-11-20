@@ -29,8 +29,18 @@ defineOptions({ name: 'MembershipManagement' })
 const { t } = useI18n()
 const permissions = usePermissions()
 const manager = useMembershipManagement()
-const { packages, accounts, codes, task, issueOpen, issued, notice, draft } =
-  manager
+const {
+  packages,
+  accounts,
+  codes,
+  task,
+  issueOpen,
+  issued,
+  notice,
+  draft,
+  recipients,
+  delivery,
+} = manager
 const accountColumns = computed<
   TableColumnsType<MembershipAccount & { id: string }>
 >(() => [
@@ -41,6 +51,17 @@ const accountColumns = computed<
 ])
 const codeColumns = computed<TableColumnsType<AuthorizationCode>>(() => [
   { title: t('membership.username'), dataIndex: 'username', width: 140 },
+  {
+    title: t('membership.recipientEmail'),
+    dataIndex: 'recipientEmail',
+    width: 220,
+    ellipsis: true,
+  },
+  {
+    title: t('membership.deliveryStatus'),
+    dataIndex: 'deliveryStatus',
+    width: 130,
+  },
   { title: t('membership.package'), dataIndex: 'packageId', width: 100 },
   { title: t('membership.price'), dataIndex: 'priceCents', width: 100 },
   { title: t('common.status'), dataIndex: 'status', width: 100 },
@@ -78,6 +99,12 @@ const packageOptions = computed(() =>
     label: `${t(`membership.${item.id}`)} · ${membershipPrice(item.priceCents)} · ${t('membership.duration', { days: item.days })}`,
   })),
 )
+const recipientOptions = computed(() =>
+  recipients.rows.value.map((item) => ({
+    value: item.username,
+    label: `${item.username} · ${item.name || '--'}${item.email ? '' : ` · ${t('membership.noVerifiedEmail')}`}`,
+  })),
+)
 </script>
 <template>
   <page-container
@@ -111,7 +138,7 @@ const packageOptions = computed(() =>
         :message="task.error.value"
         show-icon
       />
-      <a-tabs class="panel">
+      <a-tabs v-if="permissions.can('membership-admin:query')" class="panel">
         <a-tab-pane key="codes" :tab="t('membership.codes')">
           <query-table
             :panel="false"
@@ -134,6 +161,19 @@ const packageOptions = computed(() =>
               <template v-else-if="column.dataIndex === 'priceCents'">{{
                 membershipPrice(record.priceCents)
               }}</template>
+              <a-tag
+                v-else-if="column.dataIndex === 'deliveryStatus'"
+                :color="
+                  record.deliveryStatus === 'SENT'
+                    ? 'green'
+                    : record.deliveryStatus === 'FAILED'
+                      ? 'red'
+                      : 'default'
+                "
+                >{{
+                  t(`membership.delivery${record.deliveryStatus || 'NOT_SENT'}`)
+                }}</a-tag
+              >
               <a-tag
                 v-else-if="column.dataIndex === 'status'"
                 :color="record.status === 'REDEEMED' ? 'green' : 'default'"
@@ -174,6 +214,7 @@ const packageOptions = computed(() =>
                 record[
                   column.dataIndex as
                     | 'username'
+                    | 'recipientEmail'
                     | 'paymentReference'
                     | 'issuerName'
                 ] || '--'
@@ -227,7 +268,7 @@ const packageOptions = computed(() =>
       :busy="task.busy.value"
       :error="task.error.value"
       :width="560"
-      @cancel="issueOpen = false"
+      @cancel="manager.closeIssue"
       @submit="manager.issue"
     >
       <a-alert
@@ -242,18 +283,51 @@ const packageOptions = computed(() =>
         :rules="[
           {
             required: true,
-            whitespace: true,
-            min: 5,
-            max: 64,
-            message: t('membership.usernameRequired'),
+            message: t('membership.recipientRequired'),
           },
         ]"
-        ><a-input
-          v-model:value="draft.username"
-          :maxlength="64"
-          autocomplete="off"
+        ><a-select
+          :value="draft.username || undefined"
+          show-search
+          allow-clear
+          :filter-option="false"
+          :options="recipientOptions"
+          :loading="recipients.loading.value"
+          :placeholder="t('membership.recipientSearch')"
+          :not-found-content="
+            recipients.loading.value
+              ? t('common.loading')
+              : t('membership.recipientEmpty')
+          "
           :disabled="task.busy.value"
+          @search="manager.searchRecipients"
+          @change="manager.selectRecipient"
       /></a-form-item>
+      <a-alert
+        v-if="recipients.error.value"
+        type="error"
+        :message="recipients.error.value"
+        show-icon
+        class="issue-hint"
+      />
+      <a-form-item
+        name="email"
+        :label="t('membership.recipientEmail')"
+        :extra="t('membership.boundEmailHint')"
+        :rules="[
+          {
+            required: true,
+            type: 'email',
+            message: t('membership.verifiedEmailRequired'),
+          },
+        ]"
+      >
+        <a-input
+          :value="draft.email"
+          readonly
+          :placeholder="t('membership.noVerifiedEmail')"
+        />
+      </a-form-item>
       <a-form-item
         name="packageId"
         :label="t('membership.package')"
@@ -283,20 +357,26 @@ const packageOptions = computed(() =>
       /></a-form-item>
       <template #footer
         ><a-space class="issue-footer"
-          ><a-button :disabled="task.busy.value" @click="issueOpen = false">{{
+          ><a-button :disabled="task.busy.value" @click="manager.closeIssue">{{
             t('common.cancel')
           }}</a-button
           ><a-button
             type="primary"
             html-type="submit"
             :loading="task.busy.value"
-            :disabled="task.busy.value"
+            :disabled="task.busy.value || !recipients.selected.value?.email"
             >{{ t('membership.issue') }}</a-button
           ></a-space
         ></template
       >
     </form-modal>
-    <issued-code-modal :result="issued" @close="issued = undefined" />
+    <issued-code-modal
+      :result="issued"
+      :delivery-error="delivery.error.value"
+      :delivery-loading="delivery.loading.value"
+      @refresh="delivery.refresh"
+      @close="manager.closeIssued"
+    />
   </page-container>
 </template>
 <style scoped>

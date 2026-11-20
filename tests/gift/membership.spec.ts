@@ -3,13 +3,23 @@ import type { ServerMenu } from '../../src/shared/auth/types'
 import project from '../../project.config.json' with { type: 'json' }
 
 /** Exercise the real module/router/forms with the frozen HTTP contract, not a live payment service. */
-async function membershipFixture(context: BrowserContext, admin = false) {
+async function membershipFixture(
+  context: BrowserContext,
+  admin: boolean | 'issue-only' = false,
+) {
   let vip = false
   let redeemFailed = true
   let issued = false
   let status = 'UNUSED'
+  let codeId = 'code-a'
+  let deliveryStatus = 'SENDING'
+  let deliveryTarget = 'SENT'
   const redeemIds: string[] = []
   const issueIds: string[] = []
+  const issueBodies: Record<string, unknown>[] = []
+  const reissueIds: string[] = []
+  const retiredCodes: string[] = []
+  const paths: string[] = []
   const packages = [
     { id: 'DAY', name: '日卡', days: 1, priceCents: 200 },
     { id: 'WEEK', name: '周卡', days: 7, priceCents: 400 },
@@ -67,7 +77,7 @@ async function membershipFixture(context: BrowserContext, admin = false) {
     updatedAt: 1,
   }
   const authorization = () => ({
-    id: 'code-a',
+    id: codeId,
     userId: 'member-a',
     username: 'member-a',
     packageId: 'DAY',
@@ -78,6 +88,8 @@ async function membershipFixture(context: BrowserContext, admin = false) {
     issuedAt: Date.now(),
     redeemedAt: null,
     issuerName: '管理员甲',
+    recipientEmail: 'member@example.com',
+    deliveryStatus,
   })
   await context.addInitScript(
     (namespace) =>
@@ -88,6 +100,7 @@ async function membershipFixture(context: BrowserContext, admin = false) {
     const request = route.request()
     const url = new URL(request.url())
     const path = url.pathname.replace(/^\/api/, '')
+    paths.push(path)
     const body = request.postData() ? request.postDataJSON() : undefined
     const send = (result: unknown, statusCode = 200, message?: string) =>
       route.fulfill({
@@ -129,7 +142,10 @@ async function membershipFixture(context: BrowserContext, admin = false) {
             ? [
                 {
                   id: 'membership-admin',
-                  actions: ['query', 'issue', 'revoke'],
+                  actions:
+                    admin === 'issue-only'
+                      ? ['issue']
+                      : ['query', 'issue', 'revoke'],
                 },
               ]
             : []),
@@ -192,12 +208,52 @@ async function membershipFixture(context: BrowserContext, admin = false) {
       ])
     if (path === '/membership/admin/codes/_query')
       return page(issued ? [authorization()] : [])
+    if (path === '/membership/admin/recipients/_query')
+      return send(
+        body.search.includes('nomail')
+          ? [
+              {
+                userId: 'no-email',
+                username: 'nomail',
+                name: '未绑定用户',
+                email: null,
+              },
+            ]
+          : [
+              {
+                userId: 'member-a',
+                username: 'member-a',
+                name: '用户甲',
+                email: 'member@example.com',
+              },
+            ],
+      )
+    if (/^\/membership\/admin\/codes\/[^/]+\/delivery$/.test(path)) {
+      deliveryStatus = deliveryTarget
+      return send({
+        codeId,
+        recipientEmail: 'member@example.com',
+        deliveryStatus,
+      })
+    }
     if (path === '/membership/admin/codes') {
       issueIds.push(body.requestId)
+      issueBodies.push(body)
       issued = true
       return send({
         authorization: authorization(),
         code: 'SECRET-ONE-TIME-CODE',
+        replayed: false,
+      })
+    }
+    if (path.endsWith('/reissue')) {
+      reissueIds.push(body.requestId)
+      retiredCodes.push(codeId)
+      codeId = 'code-reissued'
+      deliveryStatus = 'SENDING'
+      return send({
+        authorization: authorization(),
+        code: 'REISSUED-ONE-TIME-CODE',
         replayed: false,
       })
     }
@@ -247,7 +303,27 @@ async function membershipFixture(context: BrowserContext, admin = false) {
     if (/^\/user\/settings\//.test(path)) return send([])
     return send(null, 404, `Unhandled ${path}`)
   })
-  return { redeemIds, issueIds }
+  return {
+    redeemIds,
+    issueIds,
+    issueBodies,
+    reissueIds,
+    retiredCodes,
+    paths,
+    setDeliveryTarget: (value: string) => {
+      deliveryTarget = value
+    },
+  }
+}
+
+async function selectRecipient(
+  page: import('@playwright/test').Page,
+  dialog: import('@playwright/test').Locator,
+  search = 'member',
+  label = 'member-a · 用户甲',
+) {
+  await dialog.getByLabel('用户名', { exact: true }).fill(search)
+  await page.getByTitle(label, { exact: true }).click()
 }
 
 for (const width of [1440, 390]) {
@@ -323,7 +399,13 @@ for (const width of [1440, 390]) {
     await page.goto('/membership/manage')
     await page.getByRole('button', { name: '核款并发码', exact: true }).click()
     const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('用户名', { exact: true }).fill('member-a')
+    await selectRecipient(page, dialog)
+    await expect(dialog.getByLabel('收件邮箱', { exact: true })).toHaveValue(
+      'member@example.com',
+    )
+    await expect(
+      dialog.getByLabel('收件邮箱', { exact: true }),
+    ).toHaveAttribute('readonly', '')
     await dialog.getByLabel('套餐', { exact: true }).click()
     await page.getByTitle('日卡 · ¥2.00 · 1 天', { exact: true }).click()
     await dialog.getByLabel('收款参考号', { exact: true }).fill('transfer-1')
@@ -334,6 +416,9 @@ for (const width of [1440, 390]) {
     await expect(result.getByLabel('授权码')).toHaveValue(
       'SECRET-ONE-TIME-CODE',
     )
+    await expect(result.getByText('发送中', { exact: true })).toBeVisible()
+    await expect(result.getByText('已发送', { exact: true })).toBeVisible()
+    expect(state.issueBodies[0]?.email).toBe('member@example.com')
     await result.getByRole('button', { name: '已保存，关闭' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(
@@ -362,3 +447,90 @@ for (const width of [1440, 390]) {
     expect(errors).toEqual([])
   })
 }
+
+test('issue-only operator can select a verified recipient and observe delivery without reading account or code lists', async ({
+  page,
+  context,
+}) => {
+  const state = await membershipFixture(context, 'issue-only')
+  await page.goto('/membership/manage')
+  await page.getByRole('button', { name: '核款并发码', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await selectRecipient(page, dialog)
+  await dialog.getByLabel('套餐', { exact: true }).click()
+  await page.getByTitle('日卡 · ¥2.00 · 1 天', { exact: true }).click()
+  await dialog.getByLabel('收款参考号', { exact: true }).fill('transfer-1')
+  await dialog.getByRole('button', { name: '核款并发码', exact: true }).click()
+  const result = page.getByRole('dialog', { name: '本次授权码' })
+  await expect(result.getByText('已发送', { exact: true })).toBeVisible()
+  expect(state.paths).not.toContain('/membership/admin/accounts/_query')
+  expect(state.paths).not.toContain('/membership/admin/codes/_query')
+  expect(state.paths.some((path) => path === '/user/_query')).toBe(false)
+  expect(state.paths).toContain('/membership/admin/recipients/_query')
+  expect(state.paths).toContain('/membership/admin/codes/code-a/delivery')
+})
+
+test('missing verified email blocks issuance and failed email supports copying or reissue from the same payment at 390px', async ({
+  page,
+  context,
+}) => {
+  const state = await membershipFixture(context, true)
+  state.setDeliveryTarget('FAILED')
+  await page.setViewportSize({ width: 390, height: 1000 })
+  await page.goto('/membership/manage')
+  await page.getByRole('button', { name: '核款并发码', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await selectRecipient(
+    page,
+    dialog,
+    'nomail',
+    'nomail · 未绑定用户 · 未绑定已验证邮箱',
+  )
+  await expect(dialog.getByLabel('收件邮箱', { exact: true })).toHaveValue('')
+  await expect(
+    dialog.getByRole('button', { name: '核款并发码', exact: true }),
+  ).toBeDisabled()
+  expect(state.issueIds).toHaveLength(0)
+  await selectRecipient(page, dialog)
+  await dialog.getByLabel('套餐', { exact: true }).click()
+  await page.getByTitle('日卡 · ¥2.00 · 1 天', { exact: true }).click()
+  await dialog.getByLabel('收款参考号', { exact: true }).fill('transfer-1')
+  await dialog.getByRole('button', { name: '核款并发码', exact: true }).click()
+  const result = page.getByRole('dialog', { name: '本次授权码' })
+  await expect(result.getByText('发送失败', { exact: true })).toBeVisible()
+  await expect(
+    result.getByText(/已核款并生成授权码，但邮件未送达/),
+  ).toBeVisible()
+  await expect(result.getByLabel('授权码')).toHaveValue('SECRET-ONE-TIME-CODE')
+  await expect(
+    result.getByRole('button', { name: '复制授权码', exact: true }),
+  ).toBeEnabled()
+  await expect(
+    page.getByText('授权码邮件已发送，请以收件箱实际接收为准', { exact: true }),
+  ).toHaveCount(0)
+  await result.getByRole('button', { name: '已保存，关闭' }).click()
+  await expect(
+    page.getByRole('cell', { name: '发送失败', exact: true }),
+  ).toBeVisible()
+  state.setDeliveryTarget('SENT')
+  await page.getByRole('button', { name: '补发', exact: true }).click()
+  await page.mouse.move(0, 0)
+  await expect(page.getByText(/补发会立即作废原未使用码/)).toBeVisible()
+  await page.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(result.getByLabel('授权码')).toHaveValue(
+    'REISSUED-ONE-TIME-CODE',
+  )
+  await expect(result.getByText('已发送', { exact: true })).toBeVisible()
+  expect(state.issueIds).toHaveLength(1)
+  expect(state.reissueIds).toHaveLength(1)
+  expect(state.retiredCodes).toEqual(['code-a'])
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await page.screenshot({
+    path: 'test-results/membership-delivery-fallback-390.png',
+    fullPage: true,
+  })
+})
