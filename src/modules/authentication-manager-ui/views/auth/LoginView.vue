@@ -18,7 +18,9 @@ const branding = useBranding()
 const { t, locale } = useI18n()
 const settings = useSettings()
 const registering = ref(false)
+const resettingPassword = ref(false)
 const RegistrationModal = defineAsyncComponent(() => import('./components/RegistrationModal.vue'))
+const PasswordResetModal = defineAsyncComponent(() => import('./components/PasswordResetModal.vue'))
 const { form, loading, busy, error, captcha, captchaEnabled, submit, prepare, refreshCaptcha } =
   useLogin()
 const recordNumber = computed(() => branding.front.recordNumber?.trim() || '')
@@ -91,6 +93,9 @@ const policeRecordUrl = computed(
             <a-button type="link" @click="registering = true">{{
               t('auth.registerLink')
             }}</a-button>
+            <a-button type="link" @click="resettingPassword = true">{{
+              t('auth.forgotPassword')
+            }}</a-button>
           </div
           ><a-button v-if="error" block class="retry-button" @click="prepare">{{
             t('common.retry')
@@ -124,6 +129,11 @@ const policeRecordUrl = computed(
       v-if="registering"
       :open="registering"
       @update:open="registering = $event"
+    />
+    <password-reset-modal
+      v-if="resettingPassword"
+      :open="resettingPassword"
+      @update:open="resettingPassword = $event"
     />
   </main>
 </template>
@@ -229,10 +239,11 @@ const policeRecordUrl = computed(
 }
 .login-registration {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 .login-registration > .ant-btn {
-  padding-inline-end: 0;
+  padding-inline: 0;
 }
 .retry-button {
   margin-top: var(--space-3);

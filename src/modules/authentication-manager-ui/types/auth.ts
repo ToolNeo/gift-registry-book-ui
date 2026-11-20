@@ -37,3 +37,14 @@ export interface EmailCaptchaProof {
   verifyKey: string
   verifyCode: string
 }
+
+export interface PasswordResetIdentity {
+  username: string
+  email: string
+}
+
+export interface PasswordResetInput extends PasswordResetIdentity, EmailCaptchaProof {
+  newPassword: string
+  challengeId: string
+  code: string
+}
