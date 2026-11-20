@@ -60,12 +60,35 @@ export const locales = {
     accounts: '会员账户',
     codes: '授权码管理',
     username: '用户名',
+    recipientRequired: '请搜索并选择用户名',
+    recipientSearch: '输入用户名搜索，最多显示 20 个匹配账号',
+    recipientSearchLimit: '搜索内容不能超过 64 个字符',
+    recipientEmpty: '请输入用户名搜索或更换关键词',
+    recipientEmail: '收件邮箱',
+    noVerifiedEmail: '未绑定已验证邮箱',
+    boundEmailHint: '自动使用所选账号绑定的已验证邮箱，不能修改收件地址。',
+    verifiedEmailRequired: '请选择已绑定验证邮箱的账号后再发码',
+    deliveryStatus: '邮件投递',
+    deliveryNOT_SENT: '未发送',
+    deliverySENDING: '发送中',
+    deliverySENT: '已发送',
+    deliveryFAILED: '发送失败',
+    deliveryHintNOT_SENT:
+      '此授权码尚未发送邮件，可手工复制交付；补发会作废旧码并发送新码。',
+    deliveryHintSENDING:
+      '授权码已生成，正在发送邮件。可关闭此窗口，后台会继续投递。',
+    deliveryHintSENT:
+      '邮件服务已接受发送，请以收件箱实际接收为准。用户仍需登录会员中心兑换，会员不会自动开通。',
+    deliveryHintFAILED:
+      '已核款并生成授权码，但邮件未送达。可复制此码交付，或在列表中补发新码，无需再次核款。',
+    deliveryQueryFailed:
+      '暂时无法查询邮件状态，发码结果已保留。请重试查询或稍后刷新列表。',
+    emailSent: '授权码邮件已发送，请以收件箱实际接收为准',
     name: '姓名',
     userId: '用户 ID',
     issue: '核款并发码',
     issueHint:
-      '请先核实已收到所选套餐的款项。授权码绑定填写的账号，发码时不消耗会员天数。',
-    usernameRequired: '请输入 5–64 位用户名',
+      '请先核实已收到所选套餐的款项。授权码将绑定所选账号并发送至其验证邮箱，用户兑换后才开始计算会员天数。',
     packageRequired: '请选择套餐',
     paymentReference: '收款参考号',
     paymentRequired: '请输入核实后的收款参考号',
@@ -87,7 +110,8 @@ export const locales = {
     revoked: '授权码已撤销',
     revokeConfirm: '确定撤销该未兑换授权码？撤销后无法兑换。',
     reissue: '补发',
-    reissueConfirm: '补发后原未使用码立即失效。确定为同一笔已核实收款补发？',
+    reissueConfirm:
+      '补发会立即作废原未使用码，并将新码发送至该账号当前绑定的验证邮箱，无需再次核款。确定补发？',
     accountsHint:
       '列表展示已初始化会员账户；旧账号首次查询权益或录入时会自动初始化，原数据保留。',
     advancedLocked: '导出、活动备份及恢复为 VIP 功能。',
@@ -157,12 +181,37 @@ export const locales = {
     accounts: 'Member accounts',
     codes: 'Authorization codes',
     username: 'Username',
+    recipientRequired: 'Search for and select a username',
+    recipientSearch: 'Search usernames; up to 20 matches are shown',
+    recipientSearchLimit: 'Search must not exceed 64 characters',
+    recipientEmpty: 'Enter a username or try another search',
+    recipientEmail: 'Recipient email',
+    noVerifiedEmail: 'No verified email binding',
+    boundEmailHint:
+      'Uses the selected account’s verified email. The recipient cannot be edited.',
+    verifiedEmailRequired:
+      'Select an account with a verified email before issuing',
+    deliveryStatus: 'Email delivery',
+    deliveryNOT_SENT: 'Not sent',
+    deliverySENDING: 'Sending',
+    deliverySENT: 'Sent',
+    deliveryFAILED: 'Failed',
+    deliveryHintNOT_SENT:
+      'No email has been sent for this code. Copy it for manual delivery, or reissue to invalidate it and email a new code.',
+    deliveryHintSENDING:
+      'The code has been issued and its email is sending. You may close this window; delivery continues in the background.',
+    deliveryHintSENT:
+      'The mail service accepted the email. Check the inbox for actual receipt. The user must redeem the code in Membership; VIP is not activated automatically.',
+    deliveryHintFAILED:
+      'Payment was confirmed and the code was issued, but email delivery failed. Copy this code or reissue from the list without confirming payment again.',
+    deliveryQueryFailed:
+      'Email status is temporarily unavailable. The issued code is retained. Retry or refresh the list later.',
+    emailSent: 'Authorization email sent; check the inbox for actual receipt',
     name: 'Name',
     userId: 'User ID',
     issue: 'Confirm payment and issue',
     issueHint:
-      'Verify that the selected package has been paid. The code is bound to this account; its duration starts on redemption.',
-    usernameRequired: 'Enter a username of 5–64 characters',
+      'Verify payment for the selected package. The code is bound to the selected account and emailed to its verified address. Membership duration starts on redemption.',
     packageRequired: 'Select a package',
     paymentReference: 'Payment reference',
     paymentRequired: 'Enter the verified payment reference',
@@ -186,7 +235,7 @@ export const locales = {
     revokeConfirm: 'Revoke this unused code? It will no longer be redeemable.',
     reissue: 'Reissue',
     reissueConfirm:
-      'Reissuing immediately invalidates the unused original. Reissue for this verified payment?',
+      'Reissuing immediately invalidates the unused original and emails a new code to the account’s current verified address. No new payment confirmation is needed. Reissue?',
     accountsHint:
       'Only initialized member accounts are shown. Existing accounts initialize on first entitlement query or write; their data remains intact.',
     advancedLocked: 'Export, activity backup and restore require VIP.',

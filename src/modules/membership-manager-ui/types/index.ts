@@ -29,6 +29,18 @@ export interface MembershipAccount {
   state: MembershipState
   expiresAt: number | null
 }
+export interface MembershipRecipient {
+  userId: string
+  username: string
+  name: string
+  email: string | null
+}
+export type DeliveryStatus = 'NOT_SENT' | 'SENDING' | 'SENT' | 'FAILED'
+export interface CodeDelivery {
+  codeId: string
+  recipientEmail: string | null
+  deliveryStatus: DeliveryStatus
+}
 export interface AuthorizationCode {
   id: string
   userId: string
@@ -41,12 +53,15 @@ export interface AuthorizationCode {
   issuedAt: number
   redeemedAt: number | null
   issuerName: string
+  recipientEmail: string | null
+  deliveryStatus: DeliveryStatus
 }
 export interface IssueInput {
   username: string
   packageId: PackageId
   paymentReference: string
   requestId: string
+  email?: string
 }
 /** Plaintext is returned only for the first successful issuance and stays in a local modal. */
 export interface IssueResult {

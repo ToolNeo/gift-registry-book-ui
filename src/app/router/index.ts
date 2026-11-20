@@ -82,9 +82,9 @@ router.beforeEach(async (to) => {
       !session.can(to.meta.permission)
     )
       return '/403'
-    const membershipPermission: Record<string, string> = {
+    const membershipPermission: Record<string, string | string[]> = {
       'membership/Center': 'membership:query',
-      'membership/Management': 'membership-admin:query',
+      'membership/Management': ['membership-admin:query', 'membership-admin:issue'],
     }
     const requiredMembership =
       membershipPermission[String(to.meta.menuComponentCode)]

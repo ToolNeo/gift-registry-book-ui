@@ -2,11 +2,13 @@ import { request } from '@/shared/api/client'
 import type { PageResult, Query, RequestOptions } from '@/shared/api/types'
 import type {
   AuthorizationCode,
+  CodeDelivery,
   IssueInput,
   IssueResult,
   MembershipAccount,
   MembershipHistory,
   MembershipPackage,
+  MembershipRecipient,
   MembershipStatus,
 } from '../types'
 
@@ -59,6 +61,22 @@ export const membershipApi = {
       await request.post<PageResult<AuthorizationCode>>(
         `${root}/admin/codes/_query`,
         query,
+        options,
+      )
+    ).result,
+  recipients: async (search: string, options?: RequestOptions) =>
+    (
+      await request.post<MembershipRecipient[]>(
+        `${root}/admin/recipients/_query`,
+        { search },
+        options,
+      )
+    ).result,
+  delivery: async (id: string, options?: RequestOptions) =>
+    (
+      await request.get<CodeDelivery>(
+        `${root}/admin/codes/${encodeURIComponent(id)}/delivery`,
+        undefined,
         options,
       )
     ).result,
