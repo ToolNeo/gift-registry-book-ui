@@ -7,6 +7,7 @@ import {
   Card as ACard,
   Form as AForm,
   FormItem as AFormItem,
+  Image as AImage,
   Input as AInput,
   Space as ASpace,
   Tag as ATag,
@@ -20,6 +21,7 @@ import PackageCards from '../components/PackageCards.vue'
 import { useMembershipCenter } from '../hooks/useMembershipCenter'
 import { membershipDate, membershipPrice } from '../utils/format'
 import type { MembershipHistory } from '../types'
+import wechatPaymentCode from '../assets/file/play.png'
 
 defineOptions({ name: 'MembershipCenter' })
 const { t } = useI18n()
@@ -101,11 +103,31 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
         <div class="stack">
           <package-cards :packages="membership.packages" />
           <p class="muted">{{ t('membership.packageHint') }}</p>
-          <a-alert
-            type="info"
-            :message="t('membership.offlineHint')"
-            show-icon
-          />
+          <div class="membership-offline-payment">
+            <figure class="membership-payment-code">
+              <a-image
+                :src="wechatPaymentCode"
+                :alt="t('membership.paymentCodeAlt')"
+                :title="t('membership.paymentPreview')"
+                width="100%"
+              >
+                <template #previewMask>{{
+                  t('membership.paymentPreview')
+                }}</template>
+              </a-image>
+              <figcaption class="muted">
+                {{ t('membership.paymentPreview') }}
+              </figcaption>
+            </figure>
+            <div class="stack">
+              <h3>{{ t('membership.wechatPayment') }}</h3>
+              <a-alert
+                type="info"
+                :message="t('membership.offlineHint')"
+                show-icon
+              />
+            </div>
+          </div>
           <p>{{ t('membership.benefits') }}</p>
         </div>
       </a-card>
@@ -224,5 +246,32 @@ p {
 }
 .membership-summary {
   margin-bottom: var(--space-3);
+}
+.membership-offline-payment {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+.membership-payment-code {
+  min-width: 0;
+  margin: 0;
+}
+.membership-payment-code figcaption {
+  margin-top: var(--space-2);
+  text-align: center;
+}
+.membership-offline-payment h3 {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .membership-offline-payment {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .membership-payment-code {
+    width: 200px;
+    max-width: 100%;
+    justify-self: center;
+  }
 }
 </style>

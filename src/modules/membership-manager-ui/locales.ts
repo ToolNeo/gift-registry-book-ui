@@ -32,6 +32,9 @@ export const locales = {
     duration: '{days} 天',
     packageHint:
       '月卡固定 30 天，季卡固定 90 天。重复兑换从现有到期时间或当前时间中较晚者继续累加。',
+    wechatPayment: '微信扫码付款',
+    paymentCodeAlt: '微信收款二维码',
+    paymentPreview: '点击图片放大查看',
     offlineHint:
       '请向管理员核实线下微信收款信息。转款后提供用户名，由管理员核款并发放绑定本账号的授权码。',
     benefits:
@@ -123,6 +126,9 @@ export const locales = {
     duration: '{days} days',
     packageHint:
       'Monthly and quarterly packages last exactly 30 and 90 days. Redemptions extend from the later of now and the existing expiry.',
+    wechatPayment: 'Pay with WeChat',
+    paymentCodeAlt: 'WeChat payment QR code',
+    paymentPreview: 'Click the image to enlarge',
     offlineHint:
       'Confirm offline WeChat payment details with an administrator. After payment, provide your username to receive an account-bound authorization code.',
     benefits:
