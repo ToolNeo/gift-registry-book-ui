@@ -8,7 +8,6 @@ import { watch } from 'vue'
 import {
   protectedRoutes,
   independentRoutes,
-  withGiftMenu,
 } from '@/modules/gift-registry-manager-ui'
 import {
   publicAuthRoutes,
@@ -54,7 +53,7 @@ router.beforeEach(async (to) => {
     await session.initialize(neededMenus)
     if (neededMenus) {
       const adapted = adaptMenus(
-        withGiftMenu(session.menus, session.can('gift-registry:query')),
+        session.menus,
         i18n.global.locale.value,
       )
       let installed = false

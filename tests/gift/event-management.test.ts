@@ -7,7 +7,6 @@ import { permissionKey } from '@/shared/auth/provider'
 import { saved } from '@/shared/utils/feedback'
 import { i18n } from '@/shared/i18n'
 import { locales } from '@/modules/gift-registry-manager-ui/locales'
-import { withGiftMenu } from '@/modules/gift-registry-manager-ui/menu-entry'
 import { protectedRoutes } from '@/modules/gift-registry-manager-ui/routes'
 import { adaptMenus } from '@/app/router/menu-adapter'
 import type { ServerMenu } from '@/shared/auth/types'
@@ -175,18 +174,10 @@ describe('activity lifecycle management boundaries', () => {
     expect(saved).toHaveBeenCalledExactlyOnceWith(locales.zh.deletedEvent)
   })
   it('never invents an activity management menu or a static route when no menu is configured', () => {
-    expect(withGiftMenu([], false)).toEqual([])
-    expect(withGiftMenu([], true).map((item) => item.code)).toEqual([
-      'gift-registry/Event',
-    ])
     expect(
       protectedRoutes.some((route) => route.path === '/gift-registry/events'),
     ).toBe(false)
-    expect(
-      adaptMenus(withGiftMenu([], true)).routes.some(
-        (route) => route.meta?.menuComponentCode === 'gift-registry/Manage',
-      ),
-    ).toBe(false)
+    expect(adaptMenus([])).toEqual({ routes: [], links: [] })
   })
   it('uses the configured management menu name, URL and position without adding a duplicate', () => {
     const server = [
@@ -198,16 +189,8 @@ describe('activity lifecycle management boundaries', () => {
         sortIndex: 7,
       },
     ]
-    expect(
-      withGiftMenu(server, true).filter(
-        (item) => item.code === 'gift-registry/Manage',
-      ),
-    ).toHaveLength(1)
-    expect(withGiftMenu(server, true).map((item) => item.code)).toEqual([
-      'gift-registry/Event',
-      'gift-registry/Manage',
-    ])
-    const { routes, links } = adaptMenus(withGiftMenu(server, true))
+    const { routes, links } = adaptMenus(server)
+    expect(links).toHaveLength(1)
     expect(
       routes.find(
         (route) => route.meta?.menuComponentCode === 'gift-registry/Manage',
@@ -236,7 +219,7 @@ describe('activity lifecycle management boundaries', () => {
           ...extra,
         },
       ]
-      const { routes, links } = adaptMenus(withGiftMenu(server, true))
+      const { routes, links } = adaptMenus(server)
       expect(
         routes.some(
           (route) => route.meta?.menuComponentCode === 'gift-registry/Manage',
