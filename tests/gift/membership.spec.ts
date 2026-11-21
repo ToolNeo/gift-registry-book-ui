@@ -14,6 +14,9 @@ async function membershipFixture(
   let codeId = 'code-a'
   let deliveryStatus = 'SENDING'
   let deliveryTarget = 'SENT'
+  let statisticsFailed = false
+  let statisticsEmpty = false
+  let statisticsTotalCents: number | undefined
   const redeemIds: string[] = []
   const issueIds: string[] = []
   const issueBodies: Record<string, unknown>[] = []
@@ -206,6 +209,56 @@ async function membershipFixture(
           expiresAt: null,
         },
       ])
+    if (path === '/membership/admin/statistics') {
+      if (statisticsFailed) return send(null, 503, 'database unavailable')
+      const increment = issued ? 1 : 0
+      const result = {
+        asOf: Date.now(),
+        timeZone: 'Asia/Shanghai',
+        expiringWithinDays: 7,
+        activeVipCount: 12,
+        expiringSoonCount: 3,
+        expiredVipCount: 4,
+        confirmedOrderCount: 28 + increment,
+        paidUserCount: 18,
+        totalConfirmedCents: statisticsTotalCents ?? 15600 + increment * 200,
+        todayConfirmedCents: 2000 + increment * 200,
+        monthConfirmedCents: 7200 + increment * 200,
+        unusedCodeCount: 5 + (issued && status === 'UNUSED' ? 1 : 0),
+        redeemedCodeCount: 20,
+        revokedCodeCount:
+          3 + retiredCodes.length + (status === 'REVOKED' ? 1 : 0),
+        packages: [
+          {
+            packageId: 'DAY',
+            confirmedOrderCount: 10 + increment,
+            confirmedCents: 2000 + increment * 200,
+          },
+          { packageId: 'WEEK', confirmedOrderCount: 8, confirmedCents: 3200 },
+          { packageId: 'MONTH', confirmedOrderCount: 8, confirmedCents: 6400 },
+          {
+            packageId: 'QUARTER',
+            confirmedOrderCount: 2,
+            confirmedCents: 4000,
+          },
+        ],
+      }
+      if (statisticsEmpty) {
+        for (const key of Object.keys(result)) {
+          if (
+            typeof result[key as keyof typeof result] === 'number' &&
+            key !== 'asOf' &&
+            key !== 'expiringWithinDays'
+          )
+            Object.assign(result, { [key]: 0 })
+        }
+        result.packages.forEach((item) => {
+          item.confirmedOrderCount = 0
+          item.confirmedCents = 0
+        })
+      }
+      return send(result)
+    }
     if (path === '/membership/admin/codes/_query')
       return page(issued ? [authorization()] : [])
     if (path === '/membership/admin/recipients/_query')
@@ -316,6 +369,15 @@ async function membershipFixture(
     setDeliveryTarget: (value: string) => {
       deliveryTarget = value
     },
+    setStatisticsFailed: (value: boolean) => {
+      statisticsFailed = value
+    },
+    setStatisticsEmpty: (value: boolean) => {
+      statisticsEmpty = value
+    },
+    setStatisticsTotalCents: (value: number) => {
+      statisticsTotalCents = value
+    },
   }
 }
 
@@ -330,6 +392,154 @@ async function selectRecipient(
 }
 
 for (const width of [1440, 390]) {
+  test(`administrator statistics show real counters and retry at ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    const state = await membershipFixture(context, true)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/membership/manage')
+    const statistics = page.getByRole('region', {
+      name: '会员与收款概览',
+      exact: true,
+    })
+    await expect(
+      statistics.locator('[data-metric="members"] .statistics-value'),
+    ).toHaveText('12')
+    await expect(
+      statistics.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥156.00')
+    await expect(
+      statistics.locator('[data-metric="month"] .statistics-value'),
+    ).toHaveText('¥72.00')
+    await expect(
+      statistics.locator('[data-metric="orders"] .statistics-value'),
+    ).toHaveText('28')
+    await expect(statistics).toContainText('7 天内到期')
+    await expect(statistics).toContainText('北京时间')
+    await expect(statistics.locator('.statistics-packages li')).toHaveCount(4)
+    await expect(
+      statistics.locator('.statistics-packages li').last(),
+    ).toContainText('¥40.00')
+    const first = (await statistics
+      .locator('.statistics-metric')
+      .first()
+      .boundingBox())!
+    const third = (await statistics
+      .locator('.statistics-metric')
+      .nth(2)
+      .boundingBox())!
+    expect(width === 1440 ? third.y === first.y : third.y > first.y).toBe(true)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/membership-statistics-${width}.png`,
+      fullPage: true,
+    })
+    state.setStatisticsFailed(true)
+    await statistics.getByRole('button', { name: '刷新', exact: true }).click()
+    await expect(
+      statistics.getByText('统计数据加载失败，请重试。', { exact: true }),
+    ).toBeVisible()
+    await expect(statistics.locator('.statistics-value')).toHaveCount(0)
+    await expect(statistics).not.toContainText('database')
+    state.setStatisticsFailed(false)
+    await statistics.getByRole('button', { name: '重试', exact: true }).click()
+    await expect(
+      statistics.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥156.00')
+    await page.getByRole('button', { name: '语言', exact: true }).click()
+    const english = page.getByRole('region', {
+      name: 'Membership and receipts',
+      exact: true,
+    })
+    await expect(english).toContainText('Expires within 7 days')
+    await expect(english).toContainText('Receipts by package')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/membership-statistics-en-${width}.png`,
+      fullPage: true,
+    })
+    state.setStatisticsTotalCents(3_000_015_600)
+    await english.getByRole('button', { name: 'Refresh', exact: true }).click()
+    await expect(
+      english.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥30000156.00')
+    expect(
+      await english
+        .locator('[data-metric="receipts"] .statistics-value')
+        .evaluate((element) => element.scrollWidth <= element.clientWidth),
+    ).toBe(true)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    state.setStatisticsEmpty(true)
+    await english.getByRole('button', { name: 'Refresh', exact: true }).click()
+    await expect(
+      english.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥0.00')
+    await expect(
+      english.locator('[data-metric="members"] .statistics-value'),
+    ).toHaveText('0')
+    expect(errors).toEqual([])
+  })
+  test(`membership package cards preserve package facts at ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    await membershipFixture(context)
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/membership')
+    const cards = page.locator('.membership-package')
+    await expect(cards).toHaveCount(4)
+    const prices = ['¥2.00', '¥4.00', '¥8.00', '¥20.00']
+    const days = ['1 天', '7 天', '30 天', '90 天']
+    for (let index = 0; index < 4; index++) {
+      await expect(
+        cards.nth(index).locator('.membership-package-price'),
+      ).toHaveText(prices[index]!)
+      await expect(
+        cards.nth(index).locator('.membership-package-term'),
+      ).toHaveText(days[index]!)
+      await expect(cards.nth(index)).toContainText('兑换后生效')
+    }
+    const first = (await cards.nth(0).boundingBox())!
+    const third = (await cards.nth(2).boundingBox())!
+    expect(width === 1440 ? third.y === first.y : third.y > first.y).toBe(true)
+    expect(await cards.getByRole('button').count()).toBe(0)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/membership-packages-${width}.png`,
+      fullPage: true,
+    })
+    await page.getByRole('button', { name: '语言', exact: true }).click()
+    await expect(cards.nth(3)).toContainText('90 days')
+    await expect(cards.nth(3)).toContainText('Effective after redemption')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/membership-packages-en-${width}.png`,
+      fullPage: true,
+    })
+  })
   test(`membership countdown and payment fields at ${width}px`, async ({
     page,
     context,
@@ -456,6 +666,13 @@ for (const width of [1440, 390]) {
     page.on('pageerror', (error) => errors.push(error.message))
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/membership/manage')
+    const statistics = page.getByRole('region', {
+      name: '会员与收款概览',
+      exact: true,
+    })
+    await expect(
+      statistics.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥156.00')
     await page.getByRole('button', { name: '核款并发码', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await selectRecipient(page, dialog)
@@ -477,6 +694,12 @@ for (const width of [1440, 390]) {
     )
     await expect(result.getByText('发送中', { exact: true })).toBeVisible()
     await expect(result.getByText('已发送', { exact: true })).toBeVisible()
+    await expect(
+      statistics.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥158.00')
+    await expect(
+      statistics.locator('[data-metric="orders"] .statistics-value'),
+    ).toHaveText('29')
     expect(state.issueBodies[0]?.email).toBe('member@example.com')
     await result.getByRole('button', { name: '已保存，关闭' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -493,6 +716,12 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('cell', { name: '已撤销', exact: true }),
     ).toBeVisible()
+    await expect(
+      statistics.locator('[data-metric="receipts"] .statistics-value'),
+    ).toHaveText('¥158.00')
+    await expect(
+      statistics.locator('[data-metric="orders"] .statistics-value'),
+    ).toHaveText('29')
     expect(state.issueIds).toHaveLength(1)
     expect(
       await page.evaluate(
@@ -524,6 +753,7 @@ test('issue-only operator can select a verified recipient and observe delivery w
   await expect(result.getByText('已发送', { exact: true })).toBeVisible()
   expect(state.paths).not.toContain('/membership/admin/accounts/_query')
   expect(state.paths).not.toContain('/membership/admin/codes/_query')
+  expect(state.paths).not.toContain('/membership/admin/statistics')
   expect(state.paths.some((path) => path === '/user/_query')).toBe(false)
   expect(state.paths).toContain('/membership/admin/recipients/_query')
   expect(state.paths).toContain('/membership/admin/codes/code-a/delivery')

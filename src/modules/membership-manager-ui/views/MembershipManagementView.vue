@@ -21,6 +21,7 @@ import ActionButton from '@/shared/components/ActionButton.vue'
 import { usePermissions } from '@/shared/auth/provider'
 import type { QueryField } from '@/shared/api/types'
 import IssuedCodeModal from '../components/IssuedCodeModal.vue'
+import MembershipStatistics from '../components/MembershipStatistics.vue'
 import { useMembershipManagement } from '../hooks/useMembershipManagement'
 import { membershipDate, membershipPrice } from '../utils/format'
 import type { AuthorizationCode, MembershipAccount } from '../types'
@@ -33,6 +34,7 @@ const {
   packages,
   accounts,
   codes,
+  statistics,
   task,
   issueOpen,
   issued,
@@ -120,6 +122,13 @@ const recipientOptions = computed(() =>
       ></template
     >
     <div class="stack">
+      <membership-statistics
+        v-if="permissions.can('membership-admin:query')"
+        :statistics="statistics.data.value"
+        :loading="statistics.loading.value"
+        :error="statistics.error.value"
+        @refresh="statistics.load"
+      />
       <a-alert v-if="notice" type="info" :message="notice" show-icon />
       <a-alert
         v-if="packages.error.value"

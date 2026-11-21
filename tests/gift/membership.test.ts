@@ -7,6 +7,7 @@ import { useMembership } from '@/modules/membership-manager-ui/stores/membership
 import { membershipApi } from '@/modules/membership-manager-ui/api'
 import { useMembershipCenter } from '@/modules/membership-manager-ui/hooks/useMembershipCenter'
 import { useMembershipManagement } from '@/modules/membership-manager-ui/hooks/useMembershipManagement'
+import { useMembershipStatistics } from '@/modules/membership-manager-ui/hooks/useMembershipStatistics'
 import { useGiftEntitlements } from '@/modules/gift-registry-manager-ui/hooks/useGiftEntitlements'
 import { giftApi } from '@/modules/gift-registry-manager-ui/api'
 import { permissionKey } from '@/shared/auth/provider'
@@ -21,6 +22,7 @@ import type {
   IssueResult,
   MembershipRecipient,
   MembershipStatus,
+  MembershipStatistics,
 } from '@/modules/membership-manager-ui/types'
 
 vi.mock('@/modules/membership-manager-ui/api', () => ({
@@ -28,6 +30,7 @@ vi.mock('@/modules/membership-manager-ui/api', () => ({
     me: vi.fn(),
     packages: vi.fn(),
     adminPackages: vi.fn(),
+    statistics: vi.fn(),
     history: vi.fn(),
     redeem: vi.fn(),
     accounts: vi.fn(),
@@ -60,6 +63,28 @@ const vip: MembershipStatus = {
   serverTime: now,
 }
 const emptyPage = { data: [], total: 0, pageIndex: 0, pageSize: 20 }
+const statistics: MembershipStatistics = {
+  asOf: now,
+  timeZone: 'Asia/Shanghai',
+  expiringWithinDays: 7,
+  activeVipCount: 12,
+  expiringSoonCount: 3,
+  expiredVipCount: 4,
+  confirmedOrderCount: 28,
+  paidUserCount: 18,
+  totalConfirmedCents: 15600,
+  todayConfirmedCents: 2000,
+  monthConfirmedCents: 7200,
+  unusedCodeCount: 5,
+  redeemedCodeCount: 20,
+  revokedCodeCount: 3,
+  packages: [
+    { packageId: 'DAY', confirmedOrderCount: 10, confirmedCents: 2000 },
+    { packageId: 'WEEK', confirmedOrderCount: 8, confirmedCents: 3200 },
+    { packageId: 'MONTH', confirmedOrderCount: 8, confirmedCents: 6400 },
+    { packageId: 'QUARTER', confirmedOrderCount: 2, confirmedCents: 4000 },
+  ],
+}
 const recipient: MembershipRecipient = {
   userId: 'member-a',
   username: 'member-a',
@@ -150,6 +175,7 @@ beforeEach(() => {
   vi.mocked(membershipApi.adminPackages).mockResolvedValue([
     { id: 'DAY', name: '日卡', days: 1, priceCents: 200 },
   ])
+  vi.mocked(membershipApi.statistics).mockResolvedValue(statistics)
   vi.mocked(membershipApi.history).mockResolvedValue(emptyPage)
   vi.mocked(membershipApi.accounts).mockResolvedValue(emptyPage)
   vi.mocked(membershipApi.codes).mockResolvedValue(emptyPage)
@@ -170,6 +196,126 @@ afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
   useMembership().clear()
   vi.useRealTimers()
+})
+
+describe('administrator statistics scope and refresh', () => {
+  it.each([
+    'membership-admin:issue',
+    'membership-admin:revoke',
+    'membership:query',
+  ])('does not request statistics with only %s', async (permission) => {
+    const result = setup(useMembershipStatistics, new Set([permission]))
+    await result.load()
+    expect(membershipApi.statistics).not.toHaveBeenCalled()
+    expect(result.data.value).toBeUndefined()
+  })
+  it('loads for query grants, clears a failed refresh and supports retry without fake zero counters', async () => {
+    const result = setup(
+      useMembershipStatistics,
+      new Set(['membership-admin:query']),
+    )
+    await flushPromises()
+    expect(result.data.value).toEqual(statistics)
+    vi.mocked(membershipApi.statistics).mockRejectedValueOnce(
+      new Error('private database details'),
+    )
+    const loading = result.load()
+    expect(result.loading.value).toBe(true)
+    expect(result.data.value).toBeUndefined()
+    await loading
+    expect(result.data.value).toBeUndefined()
+    expect(result.error.value).toBe('统计数据加载失败，请重试。')
+    expect(result.error.value).not.toContain('database')
+    await result.load()
+    expect(result.error.value).toBe('')
+    expect(result.data.value).toEqual(statistics)
+  })
+  it.each(['logout', 'account', 'permission', 'unmount'])(
+    'aborts and discards statistics after %s',
+    async (boundary) => {
+      let resolve!: (value: MembershipStatistics) => void
+      vi.mocked(membershipApi.statistics).mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done
+          }),
+      )
+      const actions = reactive(new Set(['membership-admin:query']))
+      const result = setup(useMembershipStatistics, actions)
+      const signal = vi.mocked(membershipApi.statistics).mock.calls[0]![0]!
+        .signal!
+      if (boundary === 'logout') useSession().user = undefined
+      else if (boundary === 'account')
+        useSession().user = { ...useSession().user!, id: 'admin-b' }
+      else if (boundary === 'permission') actions.clear()
+      else wrappers.at(-1)!.unmount()
+      expect(signal.aborted).toBe(true)
+      expect(result.data.value).toBeUndefined()
+      resolve({ ...statistics, totalConfirmedCents: 999999 })
+      await flushPromises()
+      if (boundary === 'account') expect(result.data.value).toEqual(statistics)
+      else expect(result.data.value).toBeUndefined()
+      expect(result.loading.value).toBe(false)
+      expect(result.error.value).toBe('')
+    },
+  )
+  it('ignores an older manual refresh that completes after the newest request', async () => {
+    const result = setup(
+      useMembershipStatistics,
+      new Set(['membership-admin:query']),
+    )
+    await flushPromises()
+    let resolve!: (value: MembershipStatistics) => void
+    vi.mocked(membershipApi.statistics).mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
+    const older = result.load()
+    const signal = vi.mocked(membershipApi.statistics).mock.calls[1]![0]!
+      .signal!
+    await result.load()
+    expect(signal.aborted).toBe(true)
+    resolve({ ...statistics, totalConfirmedCents: 999999 })
+    await older
+    expect(result.data.value).toEqual(statistics)
+  })
+  it('refreshes statistics after issue, reissue and revoke without granting issue-only reads', async () => {
+    const manager = setup(
+      useMembershipManagement,
+      new Set([
+        'membership-admin:query',
+        'membership-admin:issue',
+        'membership-admin:revoke',
+      ]),
+    )
+    vi.mocked(membershipApi.delivery).mockResolvedValue({
+      codeId: 'c',
+      recipientEmail: recipient.email,
+      deliveryStatus: 'SENT',
+    })
+    vi.mocked(membershipApi.issue).mockResolvedValue({
+      authorization,
+      code: 'once',
+      replayed: false,
+    })
+    vi.mocked(membershipApi.reissue).mockResolvedValue({
+      authorization: { ...authorization, id: 'new' },
+      code: 'new-once',
+      replayed: false,
+    })
+    vi.mocked(membershipApi.revoke).mockResolvedValue(true)
+    await flushPromises()
+    expect(membershipApi.statistics).toHaveBeenCalledTimes(1)
+    await chooseRecipient(manager)
+    await manager.issue()
+    expect(membershipApi.statistics).toHaveBeenCalledTimes(2)
+    await manager.reissue(authorization)
+    expect(membershipApi.statistics).toHaveBeenCalledTimes(3)
+    await manager.revoke(authorization)
+    expect(membershipApi.statistics).toHaveBeenCalledTimes(4)
+  })
 })
 
 describe('membership identity and server expiry', () => {
