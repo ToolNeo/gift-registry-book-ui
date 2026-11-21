@@ -99,6 +99,7 @@ export const useMembership = defineStore('membership', () => {
     }
     return find(session.menus)
   })
+  const currentTime = () => Date.now() + offset
   return {
     status,
     packages,
@@ -109,5 +110,6 @@ export const useMembership = defineStore('membership', () => {
     load,
     accept,
     clear,
+    currentTime,
   }
 })

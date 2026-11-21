@@ -219,6 +219,102 @@ describe('membership identity and server expiry', () => {
   })
 })
 
+describe('member-center countdown', () => {
+  it('uses corrected server time, decrements locally and catches up after a suspended clock', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    const center = setup(useMembershipCenter)
+    await flushPromises()
+    const calls = vi.mocked(membershipApi.me).mock.calls.length
+    center.membership.accept({
+      ...vip,
+      serverTime: now + 3600000,
+      expiresAt: now + 3600000 + 90061000,
+    })
+    expect(center.timeRemaining.value).toEqual({
+      days: 1,
+      hours: 1,
+      minutes: 1,
+      seconds: 1,
+    })
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(center.timeRemaining.value).toEqual({
+      days: 1,
+      hours: 1,
+      minutes: 0,
+      seconds: 59,
+    })
+    vi.setSystemTime(now + 62000)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(center.timeRemaining.value).toEqual({
+      days: 1,
+      hours: 0,
+      minutes: 59,
+      seconds: 58,
+    })
+    expect(membershipApi.me).toHaveBeenCalledTimes(calls)
+  })
+  it('clamps at zero and immediately updates after a renewed expiry is accepted', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    const center = setup(useMembershipCenter)
+    await flushPromises()
+    center.membership.accept({ ...vip, expiresAt: now + 1000 })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(center.timeRemaining.value).toEqual({
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    })
+    center.membership.accept({
+      ...vip,
+      serverTime: now + 1000,
+      expiresAt: now + 11000,
+    })
+    expect(center.timeRemaining.value?.seconds).toBe(10)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(center.timeRemaining.value?.seconds).toBe(9)
+  })
+  it.each([
+    free,
+    { ...free, state: 'EXEMPT' as const },
+    { ...vip, expiresAt: null },
+  ])(
+    'does not invent a countdown for $state without a VIP expiry',
+    async (status) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(now)
+      const center = setup(useMembershipCenter)
+      await flushPromises()
+      center.membership.accept(status)
+      expect(center.timeRemaining.value).toBeNull()
+      expect(vi.getTimerCount()).toBe(0)
+    },
+  )
+  it.each(['account', 'unmount'])(
+    'cleans up the page timer on %s',
+    async (action) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(now)
+      const center = setup(useMembershipCenter)
+      await flushPromises()
+      center.membership.accept(vip)
+      expect(vi.getTimerCount()).toBe(2)
+      if (action === 'account') {
+        useSession().clear()
+        expect(center.timeRemaining.value).toBeNull()
+        expect(vi.getTimerCount()).toBe(0)
+      } else {
+        wrappers.at(-1)!.unmount()
+        expect(vi.getTimerCount()).toBe(1)
+        center.membership.clear()
+        expect(vi.getTimerCount()).toBe(0)
+      }
+    },
+  )
+})
+
 describe('quota and action conjunction', () => {
   it('discards gift-scoped entitlement responses that arrive after logout', async () => {
     const value = await giftApi.usage()

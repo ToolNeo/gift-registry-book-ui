@@ -19,6 +19,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons-vue'
 import type { TableColumnsType } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import ActionButton from '@/shared/components/ActionButton.vue'
 import PageContainer from '@/shared/components/PageContainer.vue'
 import DataTable from '@/shared/components/DataTable.vue'
@@ -64,6 +65,16 @@ const queryFields = computed<QueryField[]>(() => [
 ])
 const columns = computed<TableColumnsType<GiftEvent>>(() => [
   { title: t('gift.eventName'), dataIndex: 'name', width: 200 },
+  { title: t('gift.eventType'), dataIndex: 'eventType', width: 160 },
+  { title: t('gift.eventDate'), dataIndex: 'eventDate', width: 140 },
+  { title: t('gift.eventStatus'), dataIndex: 'status', width: 110 },
+  {
+    title: t('gift.description'),
+    dataIndex: 'description',
+    width: 400,
+    ellipsis: { showTitle: false },
+  },
+  { title: t('gift.createdAt'), dataIndex: 'createdAt', width: 180 },
   ...(entitlement.usage.data.value?.membership.state === 'EXEMPT'
     ? [
         {
@@ -74,15 +85,6 @@ const columns = computed<TableColumnsType<GiftEvent>>(() => [
         },
       ]
     : []),
-  { title: t('gift.eventType'), dataIndex: 'eventType', width: 160 },
-  { title: t('gift.eventDate'), dataIndex: 'eventDate', width: 140 },
-  { title: t('gift.eventStatus'), dataIndex: 'status', width: 110 },
-  {
-    title: t('gift.description'),
-    dataIndex: 'description',
-    width: 400,
-    ellipsis: { showTitle: false },
-  },
   { title: t('common.actions'), dataIndex: 'actions', width: 180 },
 ])
 function openEvent(event: GiftEvent) {
@@ -186,6 +188,11 @@ async function editEvent(event: GiftEvent) {
               v-else-if="column.dataIndex === 'description'"
               :text="record.description || '--'"
             />
+            <template v-else-if="column.dataIndex === 'createdAt'">{{
+              record.createdAt == null
+                ? '--'
+                : dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss')
+            }}</template>
             <div v-else-if="column.dataIndex === 'actions'">
               <a-space :size="4" wrap>
                 <action-button
