@@ -11,6 +11,8 @@ export const locales = {
     QUARTER: '季卡',
     status: '会员状态',
     expiresAt: '到期时间',
+    timeRemaining:
+      '距离到期时间还剩{days}天{hours}小时{minutes}分钟{seconds}秒',
     exemptHint: '内置管理员自用免商业额度限制。',
     freeHint:
       '免费可保留 1 个活动，每活动最多 10 条明细。作废仍占额度，更正不占新额度。',
@@ -38,7 +40,7 @@ export const locales = {
     offlineHint:
       '请向管理员核实线下微信收款信息。转款后提供用户名，由管理员核款并发放绑定本账号的授权码。',
     paymentDetailsHint:
-      '授权码将发送至您填写的邮箱。付款时，请在“填写信息”中填写姓名、用户名和邮箱地址，否则无法发放授权码。',
+      '授权码将发送至您填写的邮箱。付款时，请在“填写信息”中填写用户名和邮箱地址，否则无法发放授权码。',
     benefits:
       '有效期内不限新增活动和明细，支持明细导出、活动备份及恢复；仍需对应操作和数据权限。',
     fileLimits:
@@ -130,6 +132,8 @@ export const locales = {
     QUARTER: '90 days',
     status: 'Membership status',
     expiresAt: 'Expires at',
+    timeRemaining:
+      'Time remaining: {days} days {hours} hours {minutes} minutes {seconds} seconds',
     exemptHint:
       'The built-in administrator is exempt from commercial quotas for own use.',
     freeHint:
@@ -158,7 +162,7 @@ export const locales = {
     offlineHint:
       'Confirm offline WeChat payment details with an administrator. After payment, provide your username to receive an account-bound authorization code.',
     paymentDetailsHint:
-      'Your authorization code will be sent to the email address you provide. When paying, enter your name, username and email address in "Fill in information"; otherwise, an authorization code cannot be issued.',
+      'Your authorization code will be sent to the email address you provide. When paying, enter your username and email address in "Fill in information"; otherwise, an authorization code cannot be issued.',
     benefits:
       'Unlimited new activities and entries, plus detail export, activity backup and restore, subject to action and data permissions.',
     fileLimits:

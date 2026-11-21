@@ -172,16 +172,6 @@ const queryFields = computed<QueryField[]>(() => [
 const columns = computed<TableColumnsType<GiftEntry>>(() => [
   { title: t('gift.sequence'), dataIndex: 'seq', width: 80 },
   { title: t('gift.entryName'), dataIndex: 'name', width: 150 },
-  ...(entitlement.usage.data.value?.membership.state === 'EXEMPT'
-    ? [
-        {
-          title: t('gift.creatorName'),
-          dataIndex: 'creatorName',
-          width: 160,
-          ellipsis: { showTitle: false },
-        },
-      ]
-    : []),
   {
     title: t('gift.amount'),
     dataIndex: 'amountCents',
@@ -197,7 +187,17 @@ const columns = computed<TableColumnsType<GiftEntry>>(() => [
   },
   { title: t('gift.remark'), dataIndex: 'remark', width: 180 },
   { title: t('common.status'), dataIndex: 'status', width: 100 },
-  { title: t('gift.time'), dataIndex: 'createdAt', width: 170 },
+  { title: t('gift.createdAt'), dataIndex: 'createdAt', width: 180 },
+  ...(entitlement.usage.data.value?.membership.state === 'EXEMPT'
+    ? [
+        {
+          title: t('gift.creatorName'),
+          dataIndex: 'creatorName',
+          width: 160,
+          ellipsis: { showTitle: false },
+        },
+      ]
+    : []),
   {
     title: t('common.actions'),
     dataIndex: 'actions',
@@ -585,7 +585,9 @@ async function copyDisplay() {
                   >{{ t(`gift.${record.status}`) }}</a-tag
                 >
                 <template v-else-if="column.dataIndex === 'createdAt'">{{
-                  dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss')
+                  record.createdAt == null
+                    ? '--'
+                    : dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss')
                 }}</template>
                 <a-space v-else-if="column.dataIndex === 'actions'">
                   <a-button

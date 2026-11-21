@@ -310,6 +310,9 @@ async function membershipFixture(
     reissueIds,
     retiredCodes,
     paths,
+    setVip: (value: boolean) => {
+      vip = value
+    },
     setDeliveryTarget: (value: string) => {
       deliveryTarget = value
     },
@@ -327,6 +330,62 @@ async function selectRecipient(
 }
 
 for (const width of [1440, 390]) {
+  test(`membership countdown and payment fields at ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    const state = await membershipFixture(context)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/membership')
+    await expect(
+      page.getByRole('heading', { name: '会员中心', exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText('免费账号', { exact: true })).toBeVisible()
+    const countdown = page.locator('.membership-countdown')
+    await expect(countdown).toHaveCount(0)
+    const payment = page.locator('.membership-offline-payment')
+    await expect(payment).toContainText('请在“填写信息”中填写用户名和邮箱地址')
+    await expect(payment).not.toContainText('姓名')
+    state.setVip(true)
+    await page
+      .locator('.membership-page .pro-page-header')
+      .getByRole('button', { name: '刷新', exact: true })
+      .click()
+    await expect(countdown).toBeVisible()
+    await expect(countdown).toHaveText(
+      /距离到期时间还剩\d+天\d+小时\d+分钟\d+秒/,
+    )
+    const remaining = async () => {
+      const parts = (await countdown.textContent())!.match(/\d+/g)!.map(Number)
+      return parts[0]! * 86400 + parts[1]! * 3600 + parts[2]! * 60 + parts[3]!
+    }
+    const before = await remaining()
+    const requests = state.paths.filter(
+      (path) => path === '/membership/me',
+    ).length
+    await expect.poll(remaining).toBeLessThan(before)
+    expect(
+      state.paths.filter((path) => path === '/membership/me'),
+    ).toHaveLength(requests)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.screenshot({
+      path: `test-results/membership-countdown-${width}.png`,
+      fullPage: true,
+    })
+    await page.getByRole('button', { name: '语言', exact: true }).click()
+    await expect(countdown).toHaveText(
+      /Time remaining: \d+ days \d+ hours \d+ minutes \d+ seconds/,
+    )
+    await expect(payment).toContainText('enter your username and email address')
+    await expect(payment).not.toContainText('enter your name,')
+    expect(errors).toEqual([])
+  })
   test(`membership redemption and quota controls at ${width}px`, async ({
     page,
     context,

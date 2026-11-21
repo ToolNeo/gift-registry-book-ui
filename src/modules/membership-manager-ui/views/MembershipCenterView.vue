@@ -27,7 +27,15 @@ defineOptions({ name: 'MembershipCenter' })
 const { t } = useI18n()
 const permissions = usePermissions()
 const center = useMembershipCenter()
-const { membership, history, usage, task, draft, refreshWarning } = center
+const {
+  membership,
+  history,
+  usage,
+  task,
+  draft,
+  refreshWarning,
+  timeRemaining,
+} = center
 const state = computed(() =>
   membership.status?.state === 'EXEMPT'
     ? 'EXEMPT'
@@ -70,11 +78,16 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
             <a-tag :color="membership.unlimited ? 'gold' : 'default'">{{
               t(`membership.${state}`)
             }}</a-tag>
-            <span v-if="state === 'VIP'"
-              >{{ t('membership.expiresAt') }}：{{
-                membershipDate(membership.status?.expiresAt)
-              }}</span
-            >
+            <template v-if="state === 'VIP'">
+              <span
+                >{{ t('membership.expiresAt') }}：{{
+                  membershipDate(membership.status?.expiresAt)
+                }}</span
+              >
+              <span v-if="timeRemaining" class="membership-countdown">{{
+                t('membership.timeRemaining', timeRemaining)
+              }}</span>
+            </template>
             <span v-else-if="state === 'EXEMPT'">{{
               t('membership.exemptHint')
             }}</span>

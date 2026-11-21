@@ -3,6 +3,8 @@ import project from '../../project.config.json' with { type: 'json' }
 
 type Identity = 'EXEMPT' | 'FREE' | 'VIP' | 'ALL'
 const creatorName = '创建用户姓名很长但应完整保留并可通过悬浮查看'.repeat(5)
+const createdAt = Date.UTC(2026, 10, 21, 1, 2, 3)
+test.use({ timezoneId: 'Asia/Shanghai' })
 
 /** Real list components consume the actor identity separately from data scope and owner quotas. */
 async function fixture(context: BrowserContext, identity: Identity) {
@@ -22,7 +24,7 @@ async function fixture(context: BrowserContext, identity: Identity) {
     description: '管理列表范围保持原样',
     status: 'ACTIVE',
     version: 1,
-    createdAt: 1,
+    createdAt,
     updatedAt: 1,
     creatorName,
   }
@@ -38,7 +40,7 @@ async function fixture(context: BrowserContext, identity: Identity) {
     status: 'VALID',
     version: 1,
     requestId: 'entry-request',
-    createdAt: 1,
+    createdAt,
     updatedAt: 1,
     creatorName,
   }
@@ -121,6 +123,7 @@ async function fixture(context: BrowserContext, identity: Identity) {
           id: 'event-b',
           name: '缺失创建用户活动',
           creatorName: null,
+          createdAt: null,
         },
       ])
     if (path === '/gift-registry/events/event-a') return send(event)
@@ -149,6 +152,7 @@ async function fixture(context: BrowserContext, identity: Identity) {
           seq: 2,
           name: '缺失创建用户宾客',
           creatorName: null,
+          createdAt: null,
         },
       ])
     if (path.startsWith('/user/settings/')) return send([])
@@ -164,6 +168,10 @@ for (const width of [1440, 390]) {
     }) => {
       const errors: string[] = []
       page.on('pageerror', (error) => errors.push(error.message))
+      page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning')
+          errors.push(message.text())
+      })
       await fixture(context, identity)
       await page.setViewportSize({ width, height: 1000 })
       for (const [path, rowName, emptyRowName] of [
@@ -178,6 +186,9 @@ for (const width of [1440, 390]) {
         await expect(row).toBeVisible()
         const header = table.locator('.ant-table-thead').getByText('创建用户', {
           exact: true,
+        })
+        const emptyRow = table.getByRole('row').filter({
+          has: page.getByRole('cell', { name: emptyRowName!, exact: true }),
         })
         if (identity === 'EXEMPT') {
           await expect(header).toHaveCount(1)
@@ -196,10 +207,14 @@ for (const width of [1440, 390]) {
               )
             }),
           ).toBe(true)
-          const emptyRow = table.getByRole('row').filter({
-            has: page.getByRole('cell', { name: emptyRowName!, exact: true }),
-          })
-          await expect(emptyRow.locator('.ellipsis').first()).toHaveText('--')
+          await expect(
+            emptyRow
+              .locator('td')
+              .nth(
+                (await table.locator('.ant-table-thead th').allTextContents())
+                  .indexOf('创建用户'),
+              ),
+          ).toHaveText('--')
           await value.hover()
           await expect(
             page.getByRole('tooltip').filter({ hasText: creatorName }),
@@ -217,6 +232,11 @@ for (const width of [1440, 390]) {
                 exact: true,
               }),
             ).toHaveCount(1)
+            expect(
+              (
+                await table.locator('.ant-table-thead th').allTextContents()
+              ).slice(-3),
+            ).toEqual(['Created at', 'Created by', 'Actions'])
             await page
               .getByRole('button', { name: 'Language', exact: true })
               .click()
@@ -227,6 +247,42 @@ for (const width of [1440, 390]) {
             table.getByText(creatorName, { exact: true }),
           ).toHaveCount(0)
         }
+        const expectedHeaders =
+          path === '/gift-registry/events'
+            ? [
+                '活动名称',
+                '活动类型与样式',
+                '活动日期',
+                '活动状态',
+                '活动描述',
+                '创建时间',
+              ]
+            : [
+                '序号',
+                '宾客姓名',
+                '礼金金额（元）',
+                '支付方式',
+                '到场人数',
+                '备注',
+                '状态',
+                '创建时间',
+              ]
+        if (identity === 'EXEMPT') expectedHeaders.push('创建用户')
+        expectedHeaders.push('操作')
+        await expect(table.locator('.ant-table-thead th')).toHaveText(
+          expectedHeaders,
+        )
+        const timeIndex = expectedHeaders.indexOf('创建时间')
+        const timeCell = row.locator('td').nth(timeIndex)
+        await expect(timeCell).toHaveText('2026-11-21 09:02:03')
+        await expect(emptyRow.locator('td').nth(timeIndex)).toHaveText('--')
+        expect(
+          await timeCell.evaluate((element) => {
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            return range.getClientRects().length
+          }),
+        ).toBe(1)
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,
@@ -243,13 +299,16 @@ for (const width of [1440, 390]) {
                 ),
             ).toBe(true)
         }
-        if (identity === 'EXEMPT')
-          await page.evaluate(() => window.scrollTo(0, 0))
-        if (identity === 'EXEMPT')
-          await page.screenshot({
-            path: `test-results/creator-${path!.startsWith('/gift-registry/events') ? 'events' : 'entries'}-${width}.png`,
-            fullPage: true,
-          })
+        await timeCell.scrollIntoViewIfNeeded()
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await page.screenshot({
+          path: test
+            .info()
+            .outputPath(
+              `creator-${identity}-${path!.startsWith('/gift-registry/events') ? 'events' : 'entries'}-${width}.png`,
+            ),
+          fullPage: true,
+        })
       }
       expect(errors).toEqual([])
     })
