@@ -13,6 +13,27 @@ export interface MembershipPackage {
   priceCents: number
   days: number
 }
+export interface MembershipStatistics {
+  asOf: number
+  timeZone: 'Asia/Shanghai'
+  expiringWithinDays: number
+  activeVipCount: number
+  expiringSoonCount: number
+  expiredVipCount: number
+  confirmedOrderCount: number
+  paidUserCount: number
+  totalConfirmedCents: number
+  todayConfirmedCents: number
+  monthConfirmedCents: number
+  unusedCodeCount: number
+  redeemedCodeCount: number
+  revokedCodeCount: number
+  packages: {
+    packageId: PackageId
+    confirmedOrderCount: number
+    confirmedCents: number
+  }[]
+}
 export interface MembershipHistory {
   id: string
   packageId: PackageId

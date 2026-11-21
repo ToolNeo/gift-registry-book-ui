@@ -16,6 +16,7 @@ import { t } from '@/shared/i18n'
 import { membershipApi } from '../api'
 import { useMembershipRecipients } from './useMembershipRecipients'
 import { useCodeDelivery } from './useCodeDelivery'
+import { useMembershipStatistics } from './useMembershipStatistics'
 import type {
   AuthorizationCode,
   IssueInput,
@@ -27,6 +28,7 @@ import type {
 export function useMembershipManagement() {
   const permissions = usePermissions()
   const session = useSession()
+  const statistics = useMembershipStatistics()
   let active = true
   let scope = 0
   let accountScope = 0
@@ -157,7 +159,7 @@ export function useMembershipManagement() {
     else notice.value = t('membership.replayHint')
     void saved(t('membership.issued'))
     if (permissions.can('membership-admin:query'))
-      await Promise.all([codes.load(), accounts.load()])
+      await Promise.all([codes.load(), accounts.load(), statistics.load()])
   }
   async function issue() {
     if (!permissions.can('membership-admin:issue') || !draft.packageId) return
@@ -201,9 +203,14 @@ export function useMembershipManagement() {
     if (!permissions.can('membership-admin:revoke') || code.status !== 'UNUSED')
       return
     await task.run(async () => {
+      const userId = session.user?.id
+      const epoch = accountScope
       await membershipApi.revoke(code.id)
+      if (!active || epoch !== accountScope || userId !== session.user?.id)
+        return
       void saved(t('membership.revoked'))
-      await codes.load()
+      if (permissions.can('membership-admin:query'))
+        await Promise.all([codes.load(), statistics.load()])
     })
   }
   async function reissue(code: AuthorizationCode) {
@@ -231,6 +238,7 @@ export function useMembershipManagement() {
     packages,
     accounts,
     codes,
+    statistics,
     task,
     issueOpen,
     issued,

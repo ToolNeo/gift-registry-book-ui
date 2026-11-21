@@ -10,6 +10,7 @@ import type {
   MembershipPackage,
   MembershipRecipient,
   MembershipStatus,
+  MembershipStatistics,
 } from '../types'
 
 const root = '/membership'
@@ -29,6 +30,14 @@ export const membershipApi = {
     (
       await request.get<MembershipPackage[]>(
         `${root}/admin/packages`,
+        undefined,
+        options,
+      )
+    ).result,
+  statistics: async (options?: RequestOptions) =>
+    (
+      await request.get<MembershipStatistics>(
+        `${root}/admin/statistics`,
         undefined,
         options,
       )
