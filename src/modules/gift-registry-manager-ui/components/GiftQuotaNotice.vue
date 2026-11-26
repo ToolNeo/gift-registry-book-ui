@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import {
-  Alert as AAlert,
-  Button as AButton,
-  Space as ASpace,
-} from 'ant-design-vue'
+import { Alert as AAlert, Button as AButton } from 'ant-design-vue'
 import type { GiftUsage } from '../types'
 defineProps<{
   usage: GiftUsage | undefined
@@ -26,23 +22,25 @@ const { t } = useI18n()
       ></a-alert
     >
     <template v-else-if="usage">
-      <a-space wrap>
-        <span>{{
-          t('membership.activityQuota', {
-            used: usage.ownedActivityCount,
-            limit: usage.activityLimit ?? t('membership.unlimitedLimit'),
-          })
-        }}</span>
-        <span v-if="usage.eventId">{{
-          t('membership.entryQuota', {
-            used: usage.entryCount,
-            limit: usage.entryLimit ?? t('membership.unlimitedLimit'),
-          })
-        }}</span>
+      <div class="gift-quota-summary">
+        <div class="gift-quota-counts">
+          <span>{{
+            t('membership.activityQuota', {
+              used: usage.ownedActivityCount,
+              limit: usage.activityLimit ?? t('membership.unlimitedLimit'),
+            })
+          }}</span>
+          <span v-if="usage.eventId">{{
+            t('membership.entryQuota', {
+              used: usage.entryCount,
+              limit: usage.entryLimit ?? t('membership.unlimitedLimit'),
+            })
+          }}</span>
+        </div>
         <a-button v-if="centerPath" type="link" @click="emit('center')">{{
           t('membership.center')
         }}</a-button>
-      </a-space>
+      </div>
       <p v-if="!usage.canCreateEvent">{{ t('membership.activityFull') }}</p>
       <p v-if="usage.eventId && !usage.canCreateEntry">
         {{ t('membership.entryFull') }}
@@ -55,10 +53,24 @@ const { t } = useI18n()
 <style scoped>
 .gift-quota-notice {
   min-width: 0;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+.gift-quota-counts {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.gift-quota-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.gift-quota-summary .ant-btn {
+  padding: 0;
+  height: auto;
 }
 p {
   margin: var(--space-2) 0 0;

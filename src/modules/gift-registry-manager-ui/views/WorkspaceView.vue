@@ -31,14 +31,6 @@ import {
   TimelineItem as ATimelineItem,
   Upload as AUpload,
 } from 'ant-design-vue'
-import {
-  AccountBookOutlined,
-  MoneyCollectOutlined,
-  TeamOutlined,
-  UserOutlined,
-  WalletOutlined,
-  WechatOutlined,
-} from '@ant-design/icons-vue'
 import type { TableColumnsType } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import PageContainer from '@/shared/components/PageContainer.vue'
@@ -210,35 +202,29 @@ const statistics = computed(() =>
     ? [
         {
           key: 'totalAmount',
-          icon: WalletOutlined,
           value: formatAmount(summary.value.totalAmountCents),
           money: true,
         },
         {
           key: 'totalEntries',
-          icon: AccountBookOutlined,
           value: summary.value.totalEntries,
         },
         {
           key: 'cashAmount',
-          icon: MoneyCollectOutlined,
           value: formatAmount(summary.value.cashAmountCents),
           money: true,
         },
         {
           key: 'wechatAmount',
-          icon: WechatOutlined,
           value: formatAmount(summary.value.wechatAmountCents),
           money: true,
         },
         {
           key: 'totalAttendees',
-          icon: TeamOutlined,
           value: summary.value.totalAttendees,
         },
         {
           key: 'unknownAttendees',
-          icon: UserOutlined,
           value: summary.value.unregisteredAttendeeEntries,
         },
       ]
@@ -390,57 +376,61 @@ async function copyDisplay() {
         </a-space>
       </template>
       <div class="gift-workspace stack">
-        <gift-quota-notice
-          :usage="entitlement.usage.data.value"
-          :error="entitlement.usage.error.value || entitlement.membership.error"
-          :loading="entitlement.usage.loading.value"
-          :center-path="entitlement.membership.centerPath"
-          :advanced="entitlement.membership.unlimited"
-          @refresh="entitlement.refresh"
-          @center="
-            entitlement.membership.centerPath &&
-            router.push(entitlement.membership.centerPath)
-          "
-        />
-        <div class="panel gift-event-bar">
-          <div class="gift-event-picker">
-            <label for="gift-event-select">{{ t('gift.event') }}</label
-            ><a-select
-              id="gift-event-select"
-              :value="eventId || undefined"
-              :options="eventOptions"
-              :placeholder="t('gift.noEvent')"
-              :loading="eventLoading"
-              :disabled="locked"
-              @change="(value) => select(String(value))"
-            />
+        <div class="panel gift-event-context">
+          <div class="gift-event-bar">
+            <div class="gift-event-picker">
+              <label for="gift-event-select">{{ t('gift.event') }}</label
+              ><a-select
+                id="gift-event-select"
+                :value="eventId || undefined"
+                :options="eventOptions"
+                :placeholder="t('gift.noEvent')"
+                :loading="eventLoading"
+                :disabled="locked"
+                @change="(value) => select(String(value))"
+              />
+            </div>
+            <a-space wrap>
+              <a-button
+                v-if="canSave && event"
+                :disabled="locked"
+                @click="config.openEvent()"
+                >{{ t('gift.editEvent') }}</a-button
+              >
+              <a-button
+                v-if="canSave && event"
+                :disabled="locked"
+                @click="config.openDisplay"
+                >{{ t('gift.displaySettings') }}</a-button
+              >
+              <a-button
+                v-if="event && permissions.can('gift-registry:backup')"
+                :disabled="locked || !entitlement.canBackup.value"
+                @click="config.backup"
+                >{{ t('gift.backup') }}</a-button
+              >
+              <a-button
+                :disabled="locked"
+                :loading="eventLoading"
+                @click="eventId ? refresh() : loadEvents()"
+                >{{ t('common.refresh') }}</a-button
+              >
+            </a-space>
           </div>
-          <a-space wrap>
-            <a-button
-              v-if="canSave && event"
-              :disabled="locked"
-              @click="config.openEvent()"
-              >{{ t('gift.editEvent') }}</a-button
-            >
-            <a-button
-              v-if="canSave && event"
-              :disabled="locked"
-              @click="config.openDisplay"
-              >{{ t('gift.displaySettings') }}</a-button
-            >
-            <a-button
-              v-if="event && permissions.can('gift-registry:backup')"
-              :disabled="locked || !entitlement.canBackup.value"
-              @click="config.backup"
-              >{{ t('gift.backup') }}</a-button
-            >
-            <a-button
-              :disabled="locked"
-              :loading="eventLoading"
-              @click="eventId ? refresh() : loadEvents()"
-              >{{ t('common.refresh') }}</a-button
-            >
-          </a-space>
+          <gift-quota-notice
+            :usage="entitlement.usage.data.value"
+            :error="
+              entitlement.usage.error.value || entitlement.membership.error
+            "
+            :loading="entitlement.usage.loading.value"
+            :center-path="entitlement.membership.centerPath"
+            :advanced="entitlement.membership.unlimited"
+            @refresh="entitlement.refresh"
+            @center="
+              entitlement.membership.centerPath &&
+              router.push(entitlement.membership.centerPath)
+            "
+          />
         </div>
         <a-alert v-if="error" type="error" :message="error" show-icon />
         <a-alert
@@ -458,36 +448,6 @@ async function copyDisplay() {
           :description="t('gift.noEvent')"
         />
         <template v-if="event">
-          <div class="gift-statistics">
-            <a-card
-              v-for="statistic in statistics"
-              :key="statistic.key"
-              class="gift-statistic-card"
-              :class="{
-                'gift-statistic-card--total': statistic.key === 'totalAmount',
-                'gift-statistic-card--money': statistic.money,
-              }"
-              size="small"
-            >
-              <a-statistic :value="statistic.value">
-                <template #title>
-                  <span class="gift-statistic-label">
-                    <span>{{ t(`gift.${statistic.key}`) }}</span>
-                    <component
-                      :is="statistic.icon"
-                      class="gift-statistic-icon"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </template>
-                <template v-if="statistic.money" #suffix>
-                  <span class="gift-statistic-unit">{{
-                    t('gift.amountYuan')
-                  }}</span>
-                </template>
-              </a-statistic>
-            </a-card>
-          </div>
           <a-alert
             v-if="!selectedActive"
             type="info"
@@ -513,6 +473,30 @@ async function copyDisplay() {
               @submit="quick.submit"
             />
           </a-card>
+          <div class="panel gift-statistics">
+            <div
+              v-for="statistic in statistics"
+              :key="statistic.key"
+              class="gift-statistic-card"
+              :class="{
+                'gift-statistic-card--total': statistic.key === 'totalAmount',
+                'gift-statistic-card--money': statistic.money,
+              }"
+            >
+              <a-statistic :value="statistic.value">
+                <template #title>
+                  <span class="gift-statistic-label">{{
+                    t(`gift.${statistic.key}`)
+                  }}</span>
+                </template>
+                <template v-if="statistic.money" #suffix>
+                  <span class="gift-statistic-unit">{{
+                    t('gift.amountYuan')
+                  }}</span>
+                </template>
+              </a-statistic>
+            </div>
+          </div>
           <a-card class="gift-ledger-card" :title="t('gift.entries')">
             <template #extra
               ><a-button
@@ -525,16 +509,6 @@ async function copyDisplay() {
                 >{{ t('gift.exportEntries') }}</a-button
               ></template
             >
-            <p
-              v-if="
-                permissions.can('gift-registry:export') ||
-                permissions.can('gift-registry:backup') ||
-                permissions.can('gift-registry:restore')
-              "
-              class="muted"
-            >
-              {{ t('membership.fileLimits') }}
-            </p>
             <pro-query
               :key="eventId"
               :fields="queryFields"
@@ -623,6 +597,16 @@ async function copyDisplay() {
                 }}</template>
               </template>
             </data-table>
+            <p
+              v-if="
+                permissions.can('gift-registry:export') ||
+                permissions.can('gift-registry:backup') ||
+                permissions.can('gift-registry:restore')
+              "
+              class="gift-file-limits muted"
+            >
+              {{ t('membership.fileLimits') }}
+            </p>
           </a-card>
         </template>
       </div>
@@ -701,42 +685,43 @@ async function copyDisplay() {
               t('gift.preview')
             }}</a-button>
           </div>
-          <a-form-item
-            name="title"
-            :label="t('gift.displayTitle')"
-            :extra="t('gift.displayTitleHint')"
-            :rules="[
-              {
-                required: true,
-                whitespace: true,
-                max: 128,
-                transform: (value: string) => value?.trim(),
-                message: t('gift.displayTitleRequired'),
-              },
-            ]"
-            ><a-input
-              v-model:value="config.settingsDraft.title"
-              :maxlength="128"
-              show-count
-          /></a-form-item>
-          <a-form-item
-            name="columnsPerPage"
-            :label="t('gift.columns')"
-            :rules="[
-              {
-                required: true,
-                type: 'number',
-                min: 1,
-                max: 24,
-                message: t('common.invalid'),
-              },
-            ]"
-            ><a-input-number
-              v-model:value="config.settingsDraft.columnsPerPage"
-              :min="1"
-              :max="24"
-              :precision="0"
-          /></a-form-item>
+          <div class="gift-settings-fields">
+            <a-form-item
+              name="title"
+              :label="t('gift.displayTitle')"
+              :rules="[
+                {
+                  required: true,
+                  whitespace: true,
+                  max: 128,
+                  transform: (value: string) => value?.trim(),
+                  message: t('gift.displayTitleRequired'),
+                },
+              ]"
+              ><a-input
+                v-model:value="config.settingsDraft.title"
+                :maxlength="128"
+                show-count
+            /></a-form-item>
+            <a-form-item
+              name="columnsPerPage"
+              :label="t('gift.columns')"
+              :rules="[
+                {
+                  required: true,
+                  type: 'number',
+                  min: 1,
+                  max: 24,
+                  message: t('common.invalid'),
+                },
+              ]"
+              ><a-input-number
+                v-model:value="config.settingsDraft.columnsPerPage"
+                :min="1"
+                :max="24"
+                :precision="0"
+            /></a-form-item>
+          </div>
         </section>
         <section class="gift-settings-section">
           <div class="gift-settings-heading">
@@ -776,27 +761,37 @@ async function copyDisplay() {
                   >{{ t('gift.removePhoto') }}</a-button
                 >
               </a-space>
-              <p class="muted">{{ t('gift.photoDraftHint') }}</p>
             </div>
           </div>
         </section>
-        <section class="gift-settings-section gift-display-link stack">
+        <section class="gift-settings-section">
           <div class="gift-settings-heading">
             <h3>{{ t('gift.displayLink') }}</h3>
           </div>
-          <a-alert type="info" :message="t('gift.linkReuseHint')" show-icon />
-          <a-button
-            :loading="config.task.busy.value"
-            :disabled="config.task.busy.value"
-            @click="generateLink()"
-            >{{ t('gift.generateDisplay') }}</a-button
-          >
-          <template v-if="config.displayLink.value"
-            ><a-input
+          <p class="muted gift-link-hint">{{ t('gift.linkReuseHint') }}</p>
+          <a-space wrap>
+            <a-button
+              :loading="config.task.busy.value"
+              :disabled="config.task.busy.value"
+              @click="generateLink()"
+              >{{ t('gift.generateDisplay') }}</a-button
+            >
+            <a-popconfirm
+              :title="t('gift.rotateHint')"
+              :ok-text="t('gift.confirmReset')"
+              :cancel-text="t('common.cancel')"
+              @confirm="generateLink(true)"
+              ><a-button danger :disabled="config.task.busy.value">{{
+                t('gift.resetDisplay')
+              }}</a-button></a-popconfirm
+            >
+          </a-space>
+          <div v-if="config.displayLink.value" class="gift-link-result">
+            <a-input
               :value="config.displayLink.value"
               readonly
               :aria-label="t('gift.displayLink')"
-            /><a-space
+            /><a-space wrap
               ><a-button @click="copyDisplay">{{
                 t('gift.copyDisplay')
               }}</a-button
@@ -806,17 +801,8 @@ async function copyDisplay() {
                 rel="noopener noreferrer"
                 >{{ t('gift.openDisplay') }}</a-button
               ></a-space
-            ></template
-          >
-          <a-popconfirm
-            :title="t('gift.rotateHint')"
-            :ok-text="t('gift.confirmReset')"
-            :cancel-text="t('common.cancel')"
-            @confirm="generateLink(true)"
-            ><a-button danger :disabled="config.task.busy.value">{{
-              t('gift.resetDisplay')
-            }}</a-button></a-popconfirm
-          >
+            >
+          </div>
         </section>
       </form-modal>
       <a-modal
@@ -903,6 +889,10 @@ async function copyDisplay() {
 .gift-workspace > * {
   min-width: 0;
 }
+.gift-event-context {
+  display: grid;
+  gap: var(--space-4);
+}
 .gift-event-bar {
   display: flex;
   flex-wrap: wrap;
@@ -924,28 +914,17 @@ async function copyDisplay() {
 .gift-statistics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-6) var(--space-8);
 }
 .gift-statistic-card {
   min-width: 0;
   container-type: inline-size;
 }
-.gift-statistic-card :deep(.ant-card-body) {
-  padding: var(--space-4);
-}
 .gift-statistic-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  display: block;
+  margin-bottom: var(--space-2);
   color: var(--color-muted);
   font-size: var(--text-body);
-}
-.gift-statistic-icon {
-  flex: none;
-  color: var(--color-muted);
-  font-size: 18px;
 }
 .gift-statistic-card :deep(.ant-statistic-content) {
   color: var(--color-text);
@@ -958,8 +937,7 @@ async function copyDisplay() {
 .gift-statistic-card--money :deep(.ant-statistic-content) {
   font-size: clamp(14px, 9cqi, 26px);
 }
-.gift-statistic-card--total :deep(.ant-statistic-content),
-.gift-statistic-card--total .gift-statistic-icon {
+.gift-statistic-card--total :deep(.ant-statistic-content) {
   color: var(--color-primary);
 }
 .gift-statistic-unit {
@@ -974,10 +952,23 @@ async function copyDisplay() {
   object-fit: contain;
 }
 .gift-settings-section {
-  padding-block: var(--space-4);
-  margin-bottom: var(--space-4);
+  padding-block: var(--space-6);
+  margin-bottom: 0;
   border-bottom: 1px solid var(--color-border);
 }
+.gift-settings-section:first-child {
+  padding-top: 0;
+}
+.gift-settings-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.gift-settings-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.gift-settings-fields .ant-form-item,
 .gift-settings-section .ant-form-item:last-child {
   margin-bottom: 0;
 }
@@ -1010,8 +1001,18 @@ async function copyDisplay() {
 .gift-photo-actions p {
   margin: 0;
 }
-.gift-display-link {
-  align-items: start;
+.gift-link-hint {
+  margin: 0 0 var(--space-4);
+}
+.gift-link-result {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.gift-file-limits {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-small);
+  line-height: 1.6;
 }
 .gift-preview {
   height: 72vh;
@@ -1034,9 +1035,6 @@ async function copyDisplay() {
   }
 }
 @media (width <= 600px) {
-  .gift-statistic-card :deep(.ant-card-body) {
-    padding: var(--space-3);
-  }
   .gift-statistic-card--total :deep(.ant-statistic-content) {
     color: var(--color-text);
   }
@@ -1047,6 +1045,9 @@ async function copyDisplay() {
   }
 }
 @media (width <= 700px) {
+  .gift-settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .gift-event-picker {
     width: 100%;
     min-width: 0;

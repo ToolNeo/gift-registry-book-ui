@@ -112,6 +112,7 @@ async function editEvent(event: GiftEvent) {
         <a-space wrap>
           <a-button
             v-if="manager.canSave.value"
+            type="primary"
             :disabled="
               manager.task.busy.value ||
               config.task.busy.value ||
@@ -121,9 +122,11 @@ async function editEvent(event: GiftEvent) {
           >
             {{ t('gift.newEvent') }}
           </a-button>
-          <a-button @click="router.push({ name: 'gift-registry' })">{{
-            t('gift.title')
-          }}</a-button>
+          <a-button
+            type="text"
+            @click="router.push({ name: 'gift-registry' })"
+            >{{ t('gift.title') }}</a-button
+          >
         </a-space>
       </template>
       <gift-quota-notice

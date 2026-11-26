@@ -419,6 +419,13 @@ for (const width of [1440, 390]) {
     ).toHaveText('28')
     await expect(statistics).toContainText('7 天内到期')
     await expect(statistics).toContainText('北京时间')
+    const basis = statistics.getByText('统计口径', { exact: true })
+    await basis.focus()
+    await basis.press('Enter')
+    await expect(
+      statistics.getByText(/按已核款订单统计，撤销授权码不代表退款/),
+    ).toBeVisible()
+    await basis.press('Enter')
     await expect(statistics.locator('.statistics-packages li')).toHaveCount(4)
     await expect(
       statistics.locator('.statistics-packages li').last(),
@@ -512,8 +519,15 @@ for (const width of [1440, 390]) {
       await expect(
         cards.nth(index).locator('.membership-package-term'),
       ).toHaveText(days[index]!)
-      await expect(cards.nth(index)).toContainText('兑换后生效')
     }
+    await expect(page.getByText('兑换后生效', { exact: true })).toHaveCount(1)
+    const rules = page.getByText('套餐与使用规则', { exact: true })
+    await rules.focus()
+    await rules.press('Enter')
+    await expect(page.getByText(/重复兑换从现有到期时间/)).toBeVisible()
+    await expect(page.getByText(/VIP 到期后保留历史数据/)).toBeVisible()
+    await expect(page.getByText(/单次 XLSX 最多 10,000 条明细/)).toBeVisible()
+    await rules.press('Enter')
     const first = (await cards.nth(0).boundingBox())!
     const third = (await cards.nth(2).boundingBox())!
     expect(width === 1440 ? third.y === first.y : third.y > first.y).toBe(true)
@@ -523,18 +537,27 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
+    await page.evaluate(() => window.scrollTo(0, 0))
     await page.screenshot({
       path: `test-results/membership-packages-${width}.png`,
       fullPage: true,
     })
     await page.getByRole('button', { name: '语言', exact: true }).click()
     await expect(cards.nth(3)).toContainText('90 days')
-    await expect(cards.nth(3)).toContainText('Effective after redemption')
+    await expect(
+      page.getByText('Effective after redemption', { exact: true }),
+    ).toHaveCount(1)
+    await page.getByText('Package and usage rules', { exact: true }).click()
+    await expect(
+      page.getByText(/Redemptions extend from the later/),
+    ).toBeVisible()
+    await page.getByText('Package and usage rules', { exact: true }).click()
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
+    await page.evaluate(() => window.scrollTo(0, 0))
     await page.screenshot({
       path: `test-results/membership-packages-en-${width}.png`,
       fullPage: true,
@@ -685,6 +708,10 @@ for (const width of [1440, 390]) {
     await dialog.getByLabel('套餐', { exact: true }).click()
     await page.getByTitle('日卡 · ¥2.00 · 1 天', { exact: true }).click()
     await dialog.getByLabel('收款参考号', { exact: true }).fill('transfer-1')
+    await page.screenshot({
+      path: `test-results/membership-issue-${width}.png`,
+      fullPage: true,
+    })
     await dialog
       .getByRole('button', { name: '核款并发码', exact: true })
       .click()
@@ -694,6 +721,7 @@ for (const width of [1440, 390]) {
     )
     await expect(result.getByText('发送中', { exact: true })).toBeVisible()
     await expect(result.getByText('已发送', { exact: true })).toBeVisible()
+    await expect(result.getByText(/关闭后无法再次查看明文/)).toBeVisible()
     await expect(
       statistics.locator('[data-metric="receipts"] .statistics-value'),
     ).toHaveText('¥158.00')

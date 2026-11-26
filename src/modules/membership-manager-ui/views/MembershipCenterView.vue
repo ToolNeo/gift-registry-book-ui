@@ -9,7 +9,6 @@ import {
   FormItem as AFormItem,
   Image as AImage,
   Input as AInput,
-  Space as ASpace,
   Tag as ATag,
 } from 'ant-design-vue'
 import type { TableColumnsType } from 'ant-design-vue'
@@ -73,11 +72,23 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
         :error="membership.error"
         @retry="center.refresh"
       >
-        <a-card :title="t('membership.status')">
-          <div class="membership-summary">
+        <a-card :aria-label="t('membership.status')">
+          <div class="membership-status-heading">
             <a-tag :color="membership.unlimited ? 'gold' : 'default'">{{
               t(`membership.${state}`)
             }}</a-tag>
+            <span v-if="usage.data.value" class="membership-usage muted">
+              {{
+                t('membership.activityQuota', {
+                  used: usage.data.value.ownedActivityCount,
+                  limit:
+                    usage.data.value.activityLimit ??
+                    t('membership.unlimitedLimit'),
+                })
+              }}
+            </span>
+          </div>
+          <div class="membership-summary">
             <template v-if="state === 'VIP'">
               <span
                 >{{ t('membership.expiresAt') }}：{{
@@ -93,29 +104,19 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
             }}</span>
             <span v-else>{{ t('membership.freeHint') }}</span>
           </div>
-          <p v-if="usage.data.value" class="membership-usage">
-            {{
-              t('membership.activityQuota', {
-                used: usage.data.value.ownedActivityCount,
-                limit:
-                  usage.data.value.activityLimit ??
-                  t('membership.unlimitedLimit'),
-              })
-            }}
-          </p>
           <a-alert
             v-if="usage.error.value"
             :message="usage.error.value"
             type="error"
             show-icon
           />
-          <p class="muted">{{ t('membership.expiryHint') }}</p>
         </a-card>
       </load-state>
       <a-card :title="t('membership.packages')">
         <div class="stack">
+          <p>{{ t('membership.benefits') }}</p>
           <package-cards :packages="membership.packages" />
-          <p class="muted">{{ t('membership.packageHint') }}</p>
+          <p class="muted">{{ t('membership.packageActivation') }}</p>
           <div class="membership-offline-payment">
             <figure class="membership-payment-code">
               <a-image
@@ -128,21 +129,23 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
                   t('membership.paymentPreview')
                 }}</template>
               </a-image>
-              <figcaption class="muted">
-                {{ t('membership.paymentPreview') }}
-              </figcaption>
             </figure>
             <div class="stack">
               <h3>{{ t('membership.wechatPayment') }}</h3>
-              <a-alert
-                type="info"
-                :message="t('membership.offlineHint')"
-                :description="t('membership.paymentDetailsHint')"
-                show-icon
-              />
+              <p>{{ t('membership.offlineHint') }}</p>
+              <p class="membership-payment-required">
+                {{ t('membership.paymentDetailsHint') }}
+              </p>
             </div>
           </div>
-          <p>{{ t('membership.benefits') }}</p>
+          <details class="membership-rules">
+            <summary>{{ t('membership.rules') }}</summary>
+            <div class="stack">
+              <p>{{ t('membership.packageHint') }}</p>
+              <p>{{ t('membership.expiryHint') }}</p>
+              <p>{{ t('membership.fileLimits') }}</p>
+            </div>
+          </details>
         </div>
       </a-card>
       <a-card
@@ -155,25 +158,34 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
           layout="vertical"
           @finish="center.redeem"
         >
-          <a-form-item
-            name="code"
-            :label="t('membership.code')"
-            :rules="[
-              {
-                required: true,
-                whitespace: true,
-                message: t('membership.codeRequired'),
-              },
-            ]"
-          >
-            <a-input
-              v-model:value="draft.code"
-              :maxlength="128"
-              :placeholder="t('membership.codePlaceholder')"
-              autocomplete="off"
+          <div class="membership-redemption-fields">
+            <a-form-item
+              name="code"
+              :label="t('membership.code')"
+              :rules="[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: t('membership.codeRequired'),
+                },
+              ]"
+            >
+              <a-input
+                v-model:value="draft.code"
+                :maxlength="128"
+                :placeholder="t('membership.codePlaceholder')"
+                autocomplete="off"
+                :disabled="task.busy.value"
+              />
+            </a-form-item>
+            <a-button
+              type="primary"
+              html-type="submit"
+              :loading="task.busy.value"
               :disabled="task.busy.value"
-            />
-          </a-form-item>
+              >{{ t('membership.redeem') }}</a-button
+            >
+          </div>
           <a-alert
             v-if="task.error.value"
             :message="task.error.value"
@@ -181,15 +193,6 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
             show-icon
             class="membership-form-error"
           />
-          <a-space wrap
-            ><a-button
-              type="primary"
-              html-type="submit"
-              :loading="task.busy.value"
-              :disabled="task.busy.value"
-              >{{ t('membership.redeem') }}</a-button
-            ></a-space
-          >
         </a-form>
         <a-alert
           v-if="refreshWarning"
@@ -233,7 +236,6 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
           </template>
         </query-table>
       </a-card>
-      <a-alert type="info" :message="t('membership.fileLimits')" show-icon />
     </div>
   </page-container>
 </template>
@@ -242,7 +244,8 @@ const columns = computed<TableColumnsType<MembershipHistory>>(() => [
 .membership-page :deep(.ant-card-body) {
   min-width: 0;
 }
-.membership-summary {
+.membership-summary,
+.membership-status-heading {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -253,39 +256,81 @@ p {
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.membership-usage,
-.membership-summary + p,
-.membership-form-error {
-  margin-bottom: var(--space-3);
+.membership-status-heading {
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
 }
-.membership-summary {
-  margin-bottom: var(--space-3);
+.membership-countdown,
+.membership-usage {
+  font-variant-numeric: tabular-nums;
+}
+.membership-summary + .ant-alert {
+  margin-top: var(--space-3);
 }
 .membership-offline-payment {
   display: grid;
   grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
 }
 .membership-payment-code {
   min-width: 0;
   margin: 0;
 }
-.membership-payment-code figcaption {
-  margin-top: var(--space-2);
-  text-align: center;
-}
 .membership-offline-payment h3 {
   margin: 0;
+  font-size: 1rem;
+}
+.membership-offline-payment > .stack {
+  max-width: 70ch;
+}
+.membership-payment-required {
+  font-weight: 500;
+}
+.membership-rules summary {
+  width: fit-content;
+  color: var(--color-text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.membership-rules summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: var(--space-1);
+}
+.membership-rules .stack {
+  margin-top: var(--space-3);
+  color: var(--color-muted);
+}
+.membership-redemption-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-4);
+}
+.membership-redemption-fields :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+.membership-redemption-fields > .ant-btn {
+  margin-top: 1.875rem;
+}
+.membership-form-error {
+  margin-top: var(--space-3);
 }
 @media (max-width: 640px) {
-  .membership-offline-payment {
+  .membership-offline-payment,
+  .membership-redemption-fields {
     grid-template-columns: minmax(0, 1fr);
   }
   .membership-payment-code {
     width: 200px;
     max-width: 100%;
     justify-self: center;
+  }
+  .membership-redemption-fields > .ant-btn {
+    justify-self: start;
+    margin-top: 0;
   }
 }
 </style>
