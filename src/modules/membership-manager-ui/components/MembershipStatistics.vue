@@ -160,7 +160,10 @@ const summaries = computed(() => {
           </li>
         </ul>
       </div>
-      <p class="statistics-basis">{{ t('membership.statisticsBasis') }}</p>
+      <details class="statistics-basis">
+        <summary>{{ t('membership.statisticsRules') }}</summary>
+        <p>{{ t('membership.statisticsBasis') }}</p>
+      </details>
     </template>
   </section>
 </template>
@@ -257,6 +260,20 @@ const summaries = computed(() => {
 .statistics-basis {
   color: var(--color-muted);
   font-size: var(--text-small);
+}
+.statistics-basis summary {
+  width: fit-content;
+  color: var(--color-text);
+  font-size: var(--text-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+.statistics-basis summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: var(--space-1);
+}
+.statistics-basis p {
+  margin: var(--space-2) 0 0;
 }
 .statistics-basis {
   margin: var(--space-4) 0 0;

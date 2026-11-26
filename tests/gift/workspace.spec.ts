@@ -2417,13 +2417,22 @@ test('activity management separates close reopen and confirmed deletion while ke
     .locator('.ant-popconfirm')
     .filter({ hasText: '确认永久删除“活动A”' })
   await expect(deletion).toContainText('全部礼金、展示设置和操作记录')
-  await deletion.locator('.ant-btn-default').click()
+  // Leave the icon's hover tooltip before using the overlapping confirmation actions.
+  await deletion.locator('.ant-popconfirm-message-title').hover()
+  await expect(
+    page.getByRole('tooltip', { name: '删除', exact: true }),
+  ).not.toBeVisible()
+  await deletion.getByRole('button', { name: '取消', exact: true }).click()
   await expect(deletion).not.toBeVisible()
   expect(
     state.requests.filter((request) => request.method === 'DELETE'),
   ).toHaveLength(0)
   await row.getByRole('button', { name: '删除', exact: true }).click()
-  await deletion.locator('.ant-btn-primary').click()
+  await deletion.locator('.ant-popconfirm-message-title').hover()
+  await expect(
+    page.getByRole('tooltip', { name: '删除', exact: true }),
+  ).not.toBeVisible()
+  await deletion.getByRole('button', { name: '删除', exact: true }).click()
   await expect(row).toHaveCount(0)
   await expectSuccessToast(page, '活动及全部相关数据已删除')
   expect(state.entries.filter((entry) => entry.eventId === 'a')).toHaveLength(0)
@@ -2820,7 +2829,7 @@ test('gift management inherits system styles and keeps statistics and portal dia
     await captureDialog('event-dialog', viewport.width)
     await page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Close' })
+      .getByRole('button', { name: 'Close', exact: true })
       .click()
     await page.getByRole('button', { name: '展示设置', exact: true }).click()
     await page
@@ -2831,7 +2840,7 @@ test('gift management inherits system styles and keeps statistics and portal dia
     await captureDialog('display-settings', viewport.width)
     await page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Close' })
+      .getByRole('button', { name: 'Close', exact: true })
       .click()
     const row = page.getByRole('row').filter({
       has: page.getByRole('cell', { name: '视觉验收宾客', exact: true }),
@@ -2852,7 +2861,7 @@ test('gift management inherits system styles and keeps statistics and portal dia
     await captureDialog('audit-dialog', viewport.width)
     await page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Close' })
+      .getByRole('button', { name: 'Close', exact: true })
       .click()
     await page.goto('/gift-registry/events')
     await expect(

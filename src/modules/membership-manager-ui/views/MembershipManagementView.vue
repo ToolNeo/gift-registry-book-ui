@@ -233,11 +233,10 @@ const recipientOptions = computed(() =>
         </a-tab-pane>
         <a-tab-pane key="accounts" :tab="t('membership.accounts')">
           <div class="stack">
-            <a-alert
-              type="info"
-              :message="t('membership.accountsHint')"
-              show-icon
-            />
+            <details class="membership-account-rules">
+              <summary>{{ t('membership.accountRules') }}</summary>
+              <p>{{ t('membership.accountsHint') }}</p>
+            </details>
             <query-table
               :panel="false"
               :fields="accountFields"
@@ -280,12 +279,7 @@ const recipientOptions = computed(() =>
       @cancel="manager.closeIssue"
       @submit="manager.issue"
     >
-      <a-alert
-        type="info"
-        :message="t('membership.issueHint')"
-        show-icon
-        class="issue-hint"
-      />
+      <p class="issue-hint">{{ t('membership.issueHint') }}</p>
       <a-form-item
         name="username"
         :label="t('membership.username')"
@@ -395,7 +389,23 @@ const recipientOptions = computed(() =>
   min-width: 0;
 }
 .issue-hint {
-  margin-bottom: var(--space-4);
+  margin: 0 0 var(--space-4);
+  line-height: 1.7;
+}
+.membership-account-rules summary {
+  width: fit-content;
+  color: var(--color-text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.membership-account-rules summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: var(--space-1);
+}
+.membership-account-rules p {
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  line-height: 1.7;
 }
 .issue-footer {
   display: flex;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons-vue'
+import { CalendarOutlined } from '@ant-design/icons-vue'
 import type { MembershipPackage } from '../types'
 defineProps<{ packages: MembershipPackage[] }>()
 const { t } = useI18n()
@@ -27,10 +27,6 @@ const { t } = useI18n()
         ><span class="membership-package-currency">¥</span
         ><span>{{ (item.priceCents / 100).toFixed(2) }}</span></strong
       >
-      <p class="membership-package-activation">
-        <clock-circle-outlined aria-hidden="true" />
-        <span>{{ t('membership.packageActivation') }}</span>
-      </p>
     </li>
   </ul>
 </template>
@@ -105,15 +101,6 @@ const { t } = useI18n()
   font-size: var(--text-small);
   line-height: 1.5;
 }
-.membership-package-activation {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  margin: 0 var(--space-6) var(--space-6);
-  color: var(--color-muted);
-  font-size: var(--text-small);
-  line-height: 1.5;
-}
 @media (width <= 960px) {
   .membership-packages {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -129,9 +116,6 @@ const { t } = useI18n()
   .membership-package-price {
     margin: var(--space-4);
     font-size: 28px;
-  }
-  .membership-package-activation {
-    margin: 0 var(--space-4) var(--space-4);
   }
 }
 @media (width <= 360px) {

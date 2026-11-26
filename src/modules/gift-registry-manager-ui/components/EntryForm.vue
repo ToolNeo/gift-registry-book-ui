@@ -96,7 +96,7 @@ const fieldsDisabled = computed(
         />
       </a-form-item>
     </div>
-    <a-form-item :label="t('gift.remark')" name="remark">
+    <a-form-item class="entry-remark" :label="t('gift.remark')" name="remark">
       <a-input v-model:value="model.remark" :maxlength="1000" />
     </a-form-item>
     <a-form-item
@@ -147,7 +147,7 @@ const fieldsDisabled = computed(
       show-icon
       class="entry-warning"
     />
-    <a-space>
+    <a-space class="entry-submit">
       <a-button
         v-if="confirmDuplicates"
         type="primary"
@@ -182,6 +182,20 @@ const fieldsDisabled = computed(
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
 }
+.gift-entry-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-4);
+}
+.entry-form-fields,
+.entry-warning,
+.gift-entry-form > .ant-form-item:not(.entry-remark) {
+  grid-column: 1 / -1;
+}
+.entry-submit {
+  align-self: start;
+  margin-top: 30px;
+}
 .entry-warning {
   margin-bottom: var(--space-4);
 }
@@ -202,6 +216,12 @@ const fieldsDisabled = computed(
 @media (width <= 600px) {
   .entry-form-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .gift-entry-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .entry-submit {
+    margin-top: 0;
   }
 }
 </style>
