@@ -339,7 +339,7 @@ async function membershipFixture(
     if (path === '/gift-registry/events/a/display-settings')
       return send({
         title: '喜宴',
-        photoDataUrl: null,
+        photoUrl: null,
         columnsPerPage: 12,
         version: 1,
       })

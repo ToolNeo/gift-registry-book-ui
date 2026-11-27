@@ -18,7 +18,7 @@ const base: DisplaySnapshot = {
     eventType: 'WEDDING',
     description: '',
   },
-  settings: { title: '活动A', photoDataUrl: null, columnsPerPage: 12 },
+  settings: { title: '活动A', photoUrl: null, columnsPerPage: 12 },
   version: 1,
   entries: [{ id: 'e1', seq: 1, name: '张三', amountCents: 123 }],
   total: 1,

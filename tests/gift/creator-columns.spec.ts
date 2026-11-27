@@ -130,7 +130,7 @@ async function fixture(context: BrowserContext, identity: Identity) {
     if (path === '/gift-registry/events/event-a/display-settings')
       return send({
         title: event.name,
-        photoDataUrl: null,
+        photoUrl: null,
         columnsPerPage: 12,
         version: 1,
       })

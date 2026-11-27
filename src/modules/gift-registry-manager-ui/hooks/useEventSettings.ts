@@ -1,4 +1,12 @@
-import { computed, reactive, ref, type Ref } from 'vue'
+import {
+  computed,
+  getCurrentScope,
+  onScopeDispose,
+  reactive,
+  ref,
+  watch,
+  type Ref,
+} from 'vue'
 import { giftApi } from '../api'
 import { useTask } from '@/shared/composables/useTask'
 import { t } from '@/shared/i18n'
@@ -44,10 +52,40 @@ export function useEventSettings(
   })
   const settingsDraft = reactive({
     title: '',
-    photoDataUrl: null as string | null,
+    photoUrl: null as string | null,
     columnsPerPage: 12,
   })
   let expectedVersion = 0
+  let selectedPhoto: File | undefined
+  let photoPreviewUrl: string | undefined
+  let photoGeneration = 0
+  let draftEventId: string | undefined
+
+  function releasePhoto() {
+    photoGeneration++
+    selectedPhoto = undefined
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
+    photoPreviewUrl = undefined
+  }
+  // A closed or switched activity owns no local file, including a decode that finishes later.
+  watch(
+    displayOpen,
+    (open) => {
+      if (!open) releasePhoto()
+    },
+    { flush: 'sync' },
+  )
+  watch(
+    () => event.value?.id,
+    (id) => {
+      if (id !== draftEventId) {
+        displayOpen.value = false
+        releasePhoto()
+      }
+    },
+    { flush: 'sync' },
+  )
+  if (getCurrentScope()) onScopeDispose(releasePhoto)
   const displayPreview = computed<DisplaySnapshot>(() => ({
     event: {
       id: event.value?.id || '',
@@ -86,9 +124,7 @@ export function useEventSettings(
       title: creating.value
         ? eventDraft.name.trim()
         : settings.value?.title || '',
-      photoDataUrl: creating.value
-        ? null
-        : settings.value?.photoDataUrl || null,
+      photoUrl: creating.value ? null : settings.value?.photoUrl || null,
       columnsPerPage: 6,
     },
     version: 0,
@@ -158,6 +194,8 @@ export function useEventSettings(
 
   function openDisplay() {
     if (!event.value || !settings.value) return
+    releasePhoto()
+    draftEventId = event.value.id
     Object.assign(settingsDraft, settings.value)
     expectedVersion = settings.value.version
     displayLink.value =
@@ -173,30 +211,59 @@ export function useEventSettings(
       if (!title || title.length > 128)
         throw new Error(t('gift.displayTitleRequired'))
       const id = event.value!.id
-      const saved = await giftApi.updateSettings(id, {
+      const input = {
         title,
-        photoDataUrl: settingsDraft.photoDataUrl,
         columnsPerPage: settingsDraft.columnsPerPage,
         expectedVersion,
-      })
-      expectedVersion = saved.version
+      }
+      const saved = selectedPhoto
+        ? await giftApi.updateSettingsPhoto(id, selectedPhoto, input)
+        : await giftApi.updateSettings(id, {
+            ...input,
+            photoUrl: settingsDraft.photoUrl,
+          })
       void notifySaved(t('gift.savedSettings'))
-      displayOpen.value = false
-      await refreshAfterWrite(id)
+      if (event.value?.id === id) {
+        expectedVersion = saved.version
+        settingsDraft.photoUrl = saved.photoUrl
+        displayOpen.value = false
+        await refreshAfterWrite(id)
+      }
     })
   }
 
   async function photo(file: File) {
+    const id = event.value?.id
+    const generation = photoGeneration
     await task.run(async () => {
-      settingsDraft.photoDataUrl = await readActivityPhoto(file)
+      let url: string
+      try {
+        url = await readActivityPhoto(file)
+      } catch (cause) {
+        if (generation !== photoGeneration) return
+        throw cause
+      }
+      if (
+        generation !== photoGeneration ||
+        !displayOpen.value ||
+        event.value?.id !== id
+      ) {
+        URL.revokeObjectURL(url)
+        return
+      }
+      releasePhoto()
+      selectedPhoto = file
+      photoPreviewUrl = url
+      settingsDraft.photoUrl = url
       void notifySaved(t('gift.selectedPhoto'))
     })
     return false
   }
 
   function removePhoto() {
-    if (!settingsDraft.photoDataUrl || task.busy.value) return
-    settingsDraft.photoDataUrl = null
+    if (!settingsDraft.photoUrl || task.busy.value) return
+    releasePhoto()
+    settingsDraft.photoUrl = null
     void notifySaved(t('gift.removedPhoto'))
   }
 

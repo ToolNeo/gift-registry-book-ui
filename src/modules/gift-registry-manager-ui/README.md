@@ -20,7 +20,7 @@
 | `api/index.ts`、`types/index.ts` | 受控管理API、公开展示REST、R10-r1增量契约（继承R5-r1业务规则与R9快照分页） |
 | `hooks/useWorkspace.ts` | 有界活动分页、活动切换、明细筛选、服务端有效统计、过期请求隔离 |
 | `hooks/useEntryEditor.ts` | 精确同名提醒、更正原因、独立到场人数、确定 / 不确定保存结果及幂等重试 |
-| `hooks/useEventSettings.ts` | 活动与展示配置草稿、照片读取、展示链接、备份与恢复 |
+| `hooks/useEventSettings.ts` | 活动与展示配置草稿、本地照片预览与保存、展示链接、备份与恢复 |
 | `hooks/useEventManagement.ts`、`views/EventManagementView.vue` | 独立活动管理、状态操作及权限/确认删除 |
 | `hooks/useDisplay.ts` | 2秒版本轮询、canonical快照分页、恢复补载/断线保留、撤销清屏和卸载取消 |
 | `components/EntryForm.vue` | 无请求副作用的礼金表单与同名记录核对 |
@@ -41,7 +41,7 @@
 5. 新登记不确定是否成功时保留原请求标识和原负载，锁定输入后重试。已确认写入后的刷新失败不能再次进入待保存状态。
 6. 展示首次用pageIndex=-1读取尾页，此后每2秒轮询version；健康且版本不变时不取snapshot，变更时取canonical快照，不在客户端拼页，也不创建WebSocket。按 `latestEntrySeq` 增长判断新增，并用pageIndex=-1取服务端当前尾页，即使“作废一笔 + 新增一笔”后有效总数相同也跳尾页；单纯更正与手动翻页保持当前页。
 7. 慢请求串行不重叠；网络临时失败保留最后成功画面，继续每2秒尝试，恢复时即使版本未变也重新取快照。HTTP403/404清屏并停止轮询。切换活动、token、页码或有效pageSize时取消旧请求并隔离旧响应，卸载取消请求与计时器。
-8. 活动照片为解码成功、最多 2 MiB 的 PNG/JPEG/WebP data URL；备份包含照片，不依赖外部文件服务。没有二维码入口或数据字段。
+8. 活动照片为解码成功、最多 2 MiB 的 PNG/JPEG/WebP。选择后使用临时 blob URL 预览，取消、换图、切换活动或离开页面时释放；只有保存才通过 `POST /events/{id}/display-settings/photo` 同时提交 file 和 application/json 的 settings，照片与标题、列数一次保存。普通设置及公开快照仅返回 `photoUrl` 文件链接，不传输 base64；链接通过当前 API 地址解析以支持跨域部署。常规 JSON 设置仅保留既有链接或清除照片。内置十种主题仍使用本地 CSS、装饰字与 SVG，只保存活动类型。schemaVersion 1/2 备份另用 `BackupSettings.photoDataUrl` 内嵌照片，旧备份可继续恢复。没有二维码入口或数据字段。
 9. 备份恢复创建新活动；原活动不被覆盖，展示令牌不随备份恢复。
 10. `eventType` 是结婚 `WEDDING`、丧事 `FUNERAL`、大寿 `BIRTHDAY`、满月酒 `FULL_MOON`、百天酒 `HUNDRED_DAYS`、周岁宴 `FIRST_BIRTHDAY`、订婚宴 `ENGAGEMENT`、乔迁宴 `HOUSEWARMING`、升学宴 `GRADUATION`、开业庆典 `BUSINESS_OPENING` 十种样式的唯一选择值，未独立保存主题。新增初始不选择类型；新增及修改时活动描述 trim 后为 1 至 1024 字。旧活动默认结婚且描述为空时展示省略描述，编辑需补填。
 11. 新建表单以草稿实时预览，取消不修改当前活动；创建预览显式将草稿活动名传入settings.title，对应后端已有的新活动默认标题。DisplayBook只渲染settings.title，不再显示活动name，也不以name兜底。展示标题表单trim后1至128字符必填，对齐后端既有@NotBlank/max128。title和描述在左页顶部，照片居中，日期在下；结婚/大寿红底金字，丧事白底墨色，对应列标贺礼/寿礼/奠仪。满月暖粉桃色（月）、百天暖杏金（百）、周岁橙红（岁）、订婚绛红（缘）、乔迁青金（乔）、升学蓝金（学）、开业红金（兴），新增类型的列标均为贺礼。

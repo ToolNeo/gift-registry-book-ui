@@ -120,6 +120,27 @@ export const giftApi = {
         input,
       )
     ).result,
+  /** Commit the selected file and display fields together; a cancelled draft never uploads. */
+  updateSettingsPhoto: async (
+    id: string,
+    file: File,
+    input: Omit<DisplaySettings, 'version' | 'photoUrl'> & {
+      expectedVersion: number
+    },
+  ) => {
+    const body = new FormData()
+    body.append('file', file)
+    body.append(
+      'settings',
+      new Blob([JSON.stringify(input)], { type: 'application/json' }),
+    )
+    return (
+      await request.post<DisplaySettings>(
+        `${eventPath(id)}/display-settings/photo`,
+        body,
+      )
+    ).result
+  },
   issueDisplayToken: async (id: string) =>
     (
       await request.post<{ token: string }>(

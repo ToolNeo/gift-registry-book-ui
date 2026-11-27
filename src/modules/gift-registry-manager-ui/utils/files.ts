@@ -1,7 +1,7 @@
 import { t } from '@/shared/i18n'
 import type { BackupBundle } from '../types'
 
-/** Decode photos before embedding them in settings so malformed files never become display assets. */
+/** Decode a local draft without copying its bytes into JSON. The caller owns the returned object URL. */
 export async function readActivityPhoto(file: File): Promise<string> {
   if (
     !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
@@ -9,22 +9,22 @@ export async function readActivityPhoto(file: File): Promise<string> {
     !file.size
   )
     throw new Error(t('gift.photoInvalid'))
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error(t('gift.photoInvalid')))
-    reader.readAsDataURL(file)
-  })
-  await new Promise<void>((resolve, reject) => {
-    const image = new Image()
-    image.onload = () =>
-      image.naturalWidth && image.naturalHeight
-        ? resolve()
-        : reject(new Error(t('gift.photoInvalid')))
-    image.onerror = () => reject(new Error(t('gift.photoInvalid')))
-    image.src = dataUrl
-  })
-  return dataUrl
+  const url = URL.createObjectURL(file)
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () =>
+        image.naturalWidth && image.naturalHeight
+          ? resolve()
+          : reject(new Error(t('gift.photoInvalid')))
+      image.onerror = () => reject(new Error(t('gift.photoInvalid')))
+      image.src = url
+    })
+    return url
+  } catch (cause) {
+    URL.revokeObjectURL(url)
+    throw cause
+  }
 }
 
 /** Backups contain personal records; download only on an explicit action and release the object URL. */
