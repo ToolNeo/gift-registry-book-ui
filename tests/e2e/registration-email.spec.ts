@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { login } from './system-helpers'
+
+const projectConfig = JSON.parse(readFileSync('project.config.json', 'utf8')) as {
+  storageNamespace: string
+}
+const tokenKey = `${projectConfig.storageNamespace}:token`
 
 const captchaImage =
   'data:image/svg+xml;base64,' +
@@ -76,7 +82,7 @@ test('registration verifies email, recovers failed delivery and creates only the
   })
   await page.goto('login')
   await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
-  const modal = page.getByRole('dialog')
+  const modal = page.getByRole('region', { name: '注册账号', exact: true })
   await modal.getByLabel('用户名', { exact: true }).fill('new-person')
   await modal.getByLabel('名称', { exact: true }).fill('新用户')
   await modal.getByLabel('电子邮箱', { exact: true }).fill('person@example.com')
@@ -114,7 +120,7 @@ test('registration verifies email, recovers failed delivery and creates only the
   await modal.getByRole('button', { name: '注册账号', exact: true }).click()
   await expect(modal.getByText('验证码错误或已过期', { exact: true })).toBeVisible()
   await expect(modal.getByLabel('密码', { exact: true })).toHaveValue(' Newpassword123 ')
-  expect(await page.evaluate(() => localStorage.getItem('proto-bridge-ui:token'))).toBeNull()
+  expect(await page.evaluate((key) => localStorage.getItem(key), tokenKey)).toBeNull()
   await page.screenshot({
     path: test.info().outputPath('registration-desktop.png'),
     animations: 'disabled',
@@ -147,10 +153,10 @@ test('registration verifies email, recovers failed delivery and creates only the
     })),
   )
   expect(
-    await page.evaluate(() => ({
-      token: localStorage.getItem('proto-bridge-ui:token'),
+    await page.evaluate((key) => ({
+      token: localStorage.getItem(key),
       persisted: JSON.stringify(localStorage) + JSON.stringify(sessionStorage),
-    })),
+    }), tokenKey),
   ).toEqual({
     token: null,
     persisted: expect.not.stringContaining('registration-code'),
@@ -185,7 +191,7 @@ test('mobile registration cancels pending email delivery and reopens with an iso
   })
   await page.goto('login')
   await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
-  const modal = page.getByRole('dialog')
+  const modal = page.getByRole('region', { name: '注册账号', exact: true })
   await modal.getByLabel('电子邮箱', { exact: true }).fill('old@example.com')
   await imageProof(modal)
   const sending = page.waitForRequest((request) =>
@@ -196,7 +202,7 @@ test('mobile registration cancels pending email delivery and reopens with an iso
   const cancelled = page.waitForEvent('requestfailed', (request) =>
     request.url().endsWith('/authorize/register/email-code'),
   )
-  await modal.getByRole('button', { name: '取消', exact: true }).click()
+  await modal.getByRole('button', { name: '返回登录', exact: true }).click()
   expect((await cancelled).failure()?.errorText).toContain('ERR_ABORTED')
   await expect(modal).toHaveCount(0)
   await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
@@ -302,7 +308,7 @@ test('legacy contact email needs first binding before password verification and 
   await modal.getByLabel('邮箱验证码', { exact: true }).fill('012345')
   await modal.getByRole('button', { name: '绑定邮箱', exact: true }).click()
   await expect(modal.getByText('邮箱验证码错误', { exact: true })).toBeVisible()
-  expect(await page.evaluate(() => localStorage.getItem('proto-bridge-ui:token'))).toBeTruthy()
+  expect(await page.evaluate((key) => localStorage.getItem(key), tokenKey)).toBeTruthy()
   await page.screenshot({
     path: test.info().outputPath('first-binding-mobile.png'),
     animations: 'disabled',
@@ -358,7 +364,7 @@ test('legacy contact email needs first binding before password verification and 
       verifyCode: 'A2BCD',
     },
   ])
-  expect(await page.evaluate(() => localStorage.getItem('proto-bridge-ui:token'))).toBeNull()
+  expect(await page.evaluate((key) => localStorage.getItem(key), tokenKey)).toBeNull()
 })
 
 for (const viewport of [
@@ -381,7 +387,7 @@ for (const viewport of [
     expect(await page.title()).not.toBe('')
     await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
     await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
-    const modal = page.getByRole('dialog')
+    const modal = page.getByRole('region', { name: '注册账号', exact: true })
     await imageProof(modal)
     const username = modal.getByLabel('用户名', { exact: true })
     await username.fill('abcd')
@@ -407,7 +413,7 @@ for (const viewport of [
       fullPage: true,
       animations: 'disabled',
     })
-    await modal.getByRole('button', { name: '取消', exact: true }).click()
+    await modal.getByRole('button', { name: '返回登录', exact: true }).click()
     await expect(modal).toHaveCount(0)
     expect(errors).toEqual([])
     expect(warnings).toEqual([])
@@ -459,7 +465,10 @@ for (const width of [1280, 390]) {
       if (flow === 'registration') {
         await page.goto('login')
         await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
-        const modal = page.getByRole('dialog')
+        const modal = page.getByRole('region', {
+          name: '注册账号',
+          exact: true,
+        })
         await modal.getByLabel('用户名', { exact: true }).fill('joint-user')
         await modal.getByLabel('名称', { exact: true }).fill('联合验证用户')
         await modal.getByLabel('电子邮箱', { exact: true }).fill('person@example.com')
@@ -476,7 +485,10 @@ for (const width of [1280, 390]) {
         await modal.getByRole('button', { name: '下一步', exact: true }).click()
         await modal.getByLabel('确认密码', { exact: true }).fill('Newpassword123')
       }
-      const modal = page.getByRole('dialog')
+      const modal =
+        flow === 'registration'
+          ? page.getByRole('region', { name: '注册账号', exact: true })
+          : page.getByRole('dialog')
       await imageProof(modal)
       const image = await modal
         .getByRole('img', { name: '图形验证码', exact: true })
@@ -516,7 +528,10 @@ for (const width of [1280, 390]) {
       await expect(modal).toHaveCount(0)
       expect(submissions).toHaveLength(2)
       expect(
-        submissions.map((body) => ({ verifyKey: body.verifyKey, verifyCode: body.verifyCode })),
+        submissions.map((body) => ({
+          verifyKey: body.verifyKey,
+          verifyCode: body.verifyCode,
+        })),
       ).toEqual([
         { verifyKey: 'image-key', verifyCode: 'WRONG' },
         { verifyKey: 'image-key', verifyCode: 'A2BCD' },

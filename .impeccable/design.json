@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-27T06:46:00.000Z",
+  "title": "Design System: 在线礼簿 (Online Gift Registry)",
+  "extensions": {
+    "colorMeta": {
+      "cobalt-primary": {
+        "role": "primary",
+        "displayName": "Cobalt Primary",
+        "canonical": "#1677ff",
+        "tonalRamp": ["#061c3d", "#093375", "#0958d9", "#0e65e5", "#1677ff", "#4f9cff", "#9ec2f7", "#eaf3ff"]
+      },
+      "sapphire-hover": {
+        "role": "primary",
+        "displayName": "Sapphire Hover",
+        "canonical": "#0e65e5",
+        "tonalRamp": ["#051936", "#082e68", "#094cb0", "#0e65e5", "#3583f2", "#74adf8", "#bdd7fc", "#eef5ff"]
+      },
+      "cobalt-deep": {
+        "role": "primary",
+        "displayName": "Cobalt Deep",
+        "canonical": "#0958d9",
+        "tonalRamp": ["#041630", "#07285c", "#09429e", "#0958d9", "#2a73e8", "#69a1f5", "#b7d2fa", "#edf4ff"]
+      },
+      "ink-obsidian": {
+        "role": "neutral",
+        "displayName": "Ink Obsidian",
+        "canonical": "#0f172a",
+        "tonalRamp": ["#0a101d", "#0f172a", "#1e293b", "#334155", "#526277", "#8494aa", "#cbd5e1", "#f1f5f9"]
+      },
+      "slate-label": {
+        "role": "neutral",
+        "displayName": "Slate Label",
+        "canonical": "#334155",
+        "tonalRamp": ["#111927", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f1f5f9"]
+      },
+      "slate-muted": {
+        "role": "neutral",
+        "displayName": "Slate Muted",
+        "canonical": "#526277",
+        "tonalRamp": ["#161f2b", "#273445", "#3d4d61", "#526277", "#728297", "#9aa7b8", "#d1d9e4", "#f4f7fc"]
+      },
+      "mist-border": {
+        "role": "neutral",
+        "displayName": "Mist Border",
+        "canonical": "#d8e2f0",
+        "tonalRamp": ["#1d2736", "#344459", "#51647d", "#7489a3", "#9db0c9", "#c0cee0", "#d8e2f0", "#f4f7fc"]
+      },
+      "sky-border-hover": {
+        "role": "neutral",
+        "displayName": "Sky Border Hover",
+        "canonical": "#9ec2f7",
+        "tonalRamp": ["#102442", "#1c3f73", "#2b5ca6", "#427cd4", "#6fa0eb", "#9ec2f7", "#cfe1fc", "#f2f7ff"]
+      },
+      "frost-divider": {
+        "role": "neutral",
+        "displayName": "Frost Divider",
+        "canonical": "#eaf0f7",
+        "tonalRamp": ["#202a36", "#39485c", "#586a82", "#7b8fa8", "#a4b5ca", "#cad6e5", "#eaf0f7", "#f8fafd"]
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#1e293b", "#3b495e", "#5d6d82", "#8392a6", "#abb7c7", "#d3dce6", "#eef2f7", "#ffffff"]
+      },
+      "recessed-ice": {
+        "role": "neutral",
+        "displayName": "Recessed Ice",
+        "canonical": "#f8fafd",
+        "tonalRamp": ["#1d2735", "#364559", "#556780", "#7a8da6", "#a4b4c9", "#cfd9e6", "#e9eff7", "#f8fafd"]
+      },
+      "alabaster-ground": {
+        "role": "neutral",
+        "displayName": "Alabaster Ground",
+        "canonical": "#f4f7fc",
+        "tonalRamp": ["#1b2533", "#334357", "#52657d", "#7589a3", "#9fb1c7", "#c9d5e4", "#e6edf7", "#f4f7fc"]
+      },
+      "emerald-success": {
+        "role": "semantic",
+        "displayName": "Emerald Success",
+        "canonical": "#16a34a",
+        "tonalRamp": ["#052e16", "#14532d", "#166534", "#15803d", "#16a34a", "#4ade80", "#bbf7d0", "#f0fdf4"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Auth Card Heading", "purpose": "Primary heading for sign-in, registration, and password reset views." },
+      "title": { "displayName": "Brand Lockup Title", "purpose": "Top-left brand wordmark beside the cobalt squircle mark." },
+      "body": { "displayName": "Body & Controls", "purpose": "Form input text, supporting subtitle copy, and button labels." },
+      "label": { "displayName": "Field Label", "purpose": "Scannable top-aligned form field labels and compact links." },
+      "caption": { "displayName": "Caption & Legal", "purpose": "Footer tagline, filing links, password rules, and email status hints." }
+    },
+    "shadows": [
+      { "name": "card-elevated", "value": "0 2px 8px -2px rgb(15 35 66 / 7%), 0 22px 52px -14px rgb(15 35 66 / 14%)", "purpose": "Single-declaration two-part shadow floating the white auth card above the full-screen backdrop." },
+      { "name": "cta-rest", "value": "0 1px 2px rgb(9 88 217 / 22%), 0 6px 16px -4px rgb(22 119 255 / 34%)", "purpose": "Grounded elevation under primary submit buttons at rest." },
+      { "name": "cta-hover", "value": "0 2px 4px rgb(9 88 217 / 26%), 0 10px 22px -6px rgb(14 101 229 / 44%)", "purpose": "Elevated hover state for primary submit buttons." },
+      { "name": "focus-halo", "value": "0 0 0 3px rgb(22 119 255 / 14%)", "purpose": "Accessible cobalt focus aura on text inputs and inline captcha refresh controls." }
+    ],
+    "motion": [
+      { "name": "auth-ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Exponential ease-out curve for 160ms-180ms control transitions and subsequent view-switch reveals." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "48rem" },
+      { "name": "compact", "value": "22rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Auth Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width cobalt primary CTA that deepens on hover to maintain high white-text contrast.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">登录</button>",
+      "css": ".ds-btn-primary { width: 100%; min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: #1677ff; color: #ffffff; font-size: 14px; font-weight: 500; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 1px 2px rgb(9 88 217 / 22%), 0 6px 16px -4px rgb(22 119 255 / 34%); transition: background-color 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.14s cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary:hover { background: #0e65e5; box-shadow: 0 2px 4px rgb(9 88 217 / 26%), 0 10px 22px -6px rgb(14 101 229 / 44%); } .ds-btn-primary:active { background: #0958d9; transform: translateY(1px); box-shadow: 0 1px 2px rgb(9 88 217 / 20%); } .ds-btn-primary:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Recessed Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "44px touch-ready form field with Recessed Ice resting surface that brightens to Paper White on focus.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-user\">用户名</label><input id=\"ds-user\" class=\"ds-input\" type=\"text\" value=\"admin\" /></div>",
+      "css": ".ds-field { display: grid; gap: 6px; } .ds-label { color: #334155; font-size: 13.5px; font-weight: 500; line-height: 20px; } .ds-input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #d8e2f0; border-radius: 8px; background: #f8fafd; color: #0f172a; caret-color: #1677ff; font-size: 14px; transition: background-color 0.16s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1); } .ds-input:hover { background: #ffffff; border-color: #9ec2f7; } .ds-input:focus { outline: none; background: #ffffff; border-color: #1677ff; box-shadow: 0 0 0 3px rgb(22 119 255 / 14%); }"
+    },
+    {
+      "name": "Elevated Auth Card",
+      "kind": "card",
+      "refersTo": "auth-card",
+      "description": "Pure white floating card using single-declaration two-part atmospheric shadow without a ghost border.",
+      "html": "<section class=\"ds-auth-card\"><h2 class=\"ds-auth-title\">登录礼簿</h2><p class=\"ds-auth-desc\">登录账号，继续记录往来。</p></section>",
+      "css": ".ds-auth-card { width: 100%; max-width: 456px; padding: 36px 40px 24px; background: #ffffff; border-radius: 16px; box-shadow: 0 2px 8px -2px rgb(15 35 66 / 7%), 0 22px 52px -14px rgb(15 35 66 / 14%); } .ds-auth-title { margin: 0; color: #0f172a; font-size: 24px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; } .ds-auth-desc { margin: 6px 0 0; color: #526277; font-size: 14px; line-height: 1.5; }"
+    },
+    {
+      "name": "Language Toggle Pill",
+      "kind": "chip",
+      "refersTo": "language-pill",
+      "description": "Direct one-click bilingual switcher pill without misleading dropdown affordances.",
+      "html": "<button class=\"ds-lang-pill\" type=\"button\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"8\" r=\"6.5\" stroke=\"currentColor\" stroke-width=\"1.3\"/><path d=\"M1.8 8h12.4M8 1.5c1.9 1.8 2.8 4 2.8 6.5S9.9 12.7 8 14.5M8 1.5C6.1 3.3 5.2 5.5 5.2 8s.9 4.7 2.8 6.5\" stroke=\"currentColor\" stroke-width=\"1.2\"/></svg><span>简体中文</span></button>",
+      "css": ".ds-lang-pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgb(15 23 42 / 8%); border-radius: 999px; background: rgb(255 255 255 / 80%); color: #334155; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1); } .ds-lang-pill:hover, .ds-lang-pill:focus-visible { outline: none; color: #1677ff; background: #ffffff; border-color: rgb(22 119 255 / 26%); box-shadow: 0 4px 12px -4px rgb(15 35 66 / 14%); }"
+    },
+    {
+      "name": "Inline Captcha Control",
+      "kind": "custom",
+      "refersTo": "input-field",
+      "description": "10px-gapped tabular verification input paired with a 132px clickable refresh frame.",
+      "html": "<div class=\"ds-captcha-row\"><input class=\"ds-captcha-input\" type=\"text\" value=\"7K3M\" aria-label=\"验证码\" /><button class=\"ds-captcha-btn\" type=\"button\" aria-label=\"刷新验证码\">7 K 3 M</button></div>",
+      "css": ".ds-captcha-row { display: flex; align-items: center; gap: 10px; } .ds-captcha-input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid #d8e2f0; border-radius: 8px; background: #f8fafd; color: #0f172a; font-size: 14px; font-variant-numeric: tabular-nums; } .ds-captcha-input:focus { outline: none; background: #ffffff; border-color: #1677ff; box-shadow: 0 0 0 3px rgb(22 119 255 / 14%); } .ds-captcha-btn { flex: 0 0 132px; height: 44px; border: 1px solid #d8e2f0; border-radius: 8px; background: #eef4fc; color: #1677ff; font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 16px; letter-spacing: 2px; cursor: pointer; transition: border-color 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s cubic-bezier(0.16, 1, 0.3, 1); } .ds-captcha-btn:hover { background: #ffffff; border-color: #9ec2f7; } .ds-captcha-btn:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; border-color: #1677ff; box-shadow: 0 0 0 3px rgb(22 119 255 / 14%); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Luminous Sapphire Precision",
+    "overview": "This visual system unifies the entry experience of 在线礼簿 with its Ant Design administration workbench through a calm, high-key blue-and-white language calibrated to Stripe and Linear light-mode craftsmanship. Because hosts and family bookkeepers open the ledger across every Chinese life milestone—from weddings and birthdays to solemn memorials—the shared entry deliberately refuses occasion-biased ornament, gloomy muted greens, and noisy gradients in favor of luminous optical clarity.\n\nStructure and restraint lead every decision. A bright alabaster spatial canvas with diffused glacier-blue light ribbons holds the perimeter while pure white working surfaces sit cleanly above it through calibrated two-part atmospheric shadows. Blue-tinted slate neutrals, crisp 44px touch-ready form controls, and deepened sapphire interaction states create quiet authority without visual fatigue.",
+    "keyCharacteristics": [
+      "Seamless #1677ff primary continuity between authentication entry and the Ant Design admin console",
+      "Blue-tinted slate neutrals across typography, borders, and recessed inputs rather than lifeless raw grays",
+      "Single-declaration elevation using soft two-part shadows with zero ghost double borders",
+      "Purposeful micro-interactions with exponential ease-out timing and full reduced-motion compliance",
+      "Themed browser-native surfaces including selection tint, caret color, autofill preservation, focus rings, and tabular numerals"
+    ],
+    "rules": [
+      {
+        "name": "The Deepening Hover Rule",
+        "body": "Primary blue controls must darken toward Sapphire Hover (#0e65e5) on hover rather than lightening toward pale sky tones, preserving WCAG AA white-text contrast in every interactive state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Footer Veil Rule",
+        "body": "Text laid over full-bleed light artwork uses Slate Label (#334155) backed by a subtle transparent-to-Alabaster Ground bottom gradient veil so light ribbons or creases never reduce contrast below 4.5:1.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Verification Rule",
+        "body": "Verification code inputs, email OTP fields, and resend countdown buttons apply font-variant-numeric: tabular-nums so numbers align cleanly and countdown text never jitters horizontally.",
+        "section": "typography"
+      },
+      {
+        "name": "The Single-Elevation Rule",
+        "body": "Elevated cards announce height through a two-part offset-and-blur shadow without an extra 1px border ring; recessed inputs reverse the logic with subtle tonal fill and hairline border.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep primary interactions anchored to #1677ff → #0e65e5 → #0958d9 so authentication flows seamlessly into the Ant Design admin workspace.",
+      "Do enforce >= 44px touch targets on all mobile interactive elements (<= 48rem), including utility pills, checkboxes, and text links.",
+      "Do preserve 10px horizontal gaps across stacked inline control rows (graphic captcha and email code) so right input edges align cleanly.",
+      "Do theme native browser affordances (::selection, caret-color, :focus-visible, :-webkit-autofill, scrollbar-color, tabular-nums) from the palette."
+    ],
+    "donts": [
+      "Don't introduce occasion-specific wedding red/gold or funeral olive-green styling on shared authentication surfaces.",
+      "Don't stack a 1px border or zero-blur 0 0 0 1px ring onto an elevated card that already carries a wide soft shadow.",
+      "Don't use lighter pale-blue hover fills (#4096ff) on white-text primary buttons where contrast drops below 4.5:1.",
+      "Don't add decorative chevrons to direct-toggle buttons or show configuration retry buttons after ordinary credential errors."
+    ]
+  }
+}

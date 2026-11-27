@@ -1,6 +1,10 @@
 export const authLocales = {
   zh: {
     auth: {
+      signInTitle: '登录礼簿',
+      signInDescription: '登录账号，继续记录往来。',
+      backToLogin: '返回登录',
+      recordTagline: '记录往来，妥善留存。',
       captcha: '验证码',
       imageCaptcha: '图形验证码',
       refreshCaptcha: '刷新图形验证码',
@@ -44,6 +48,10 @@ export const authLocales = {
   },
   en: {
     auth: {
+      signInTitle: 'Sign in',
+      signInDescription: 'Sign in to continue keeping your records.',
+      backToLogin: 'Back to sign in',
+      recordTagline: 'Keep a record of every exchange.',
       captcha: 'Verification code',
       imageCaptcha: 'Image verification code',
       refreshCaptcha: 'Refresh image verification code',

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
-import { Comment, defineComponent, h, reactive } from 'vue'
+import { Comment, defineComponent, h, reactive, ref } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { FormItem, Input, Modal, Table, type TableColumnsType } from 'ant-design-vue'
 import QueryTable from '@/shared/components/QueryTable.vue'
@@ -230,6 +230,63 @@ describe('FormModal form ownership', () => {
       destroyOnClose: true,
       width: 800,
     })
+    wrapper.unmount()
+  })
+  it('embeds the validated form without a modal and honors the current Escape lock', async () => {
+    const model = reactive({ name: '' })
+    const keyboard = ref(false)
+    const wrapper = mount(
+      defineComponent({
+        setup: () => () =>
+          h(
+            FormModal<{ name: string }>,
+            {
+              open: true,
+              embedded: true,
+              title: 'Embedded auth',
+              model,
+              keyboard: keyboard.value,
+            },
+            {
+              default: () =>
+                h(
+                  FormItem,
+                  {
+                    name: 'name',
+                    label: 'Name',
+                    rules: [{ required: true, message: 'Required name' }],
+                  },
+                  () =>
+                    h(Input, {
+                      value: model.name,
+                      'onUpdate:value': (value: string) => (model.name = value),
+                    }),
+                ),
+            },
+          ),
+      }),
+      { global, attachTo: document.body },
+    )
+    await flushPromises()
+    const component = wrapper.findComponent(FormModal)
+    expect(wrapper.find('.ant-modal').exists()).toBe(false)
+    expect(wrapper.find('[role="region"]').attributes('aria-labelledby')).toBe(
+      wrapper.find('h2').attributes('id'),
+    )
+    expect(document.activeElement).toBe(wrapper.find('h2').element)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(component.emitted('submit')).toBeUndefined()
+    await wrapper.find('input').setValue('Validated')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(component.emitted('submit')).toEqual([[]])
+    await wrapper.find('input').trigger('keydown', { key: 'Escape' })
+    expect(component.emitted('cancel')).toBeUndefined()
+    keyboard.value = true
+    await flushPromises()
+    await wrapper.find('input').trigger('keydown', { key: 'Escape' })
+    expect(component.emitted('cancel')).toEqual([[]])
     wrapper.unmount()
   })
   it('lets the caller replace the footer and preserves error/busy feedback', async () => {
