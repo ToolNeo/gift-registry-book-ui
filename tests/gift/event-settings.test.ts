@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { effectScope, ref } from 'vue'
 import { giftApi } from '@/modules/gift-registry-manager-ui/api'
 import { useEventSettings } from '@/modules/gift-registry-manager-ui/hooks/useEventSettings'
 import {
@@ -22,6 +22,7 @@ vi.mock('@/modules/gift-registry-manager-ui/api', () => ({
     createEvent: vi.fn(),
     updateEvent: vi.fn(),
     updateSettings: vi.fn(),
+    updateSettingsPhoto: vi.fn(),
     backup: vi.fn(),
     restore: vi.fn(),
     issueDisplayToken: vi.fn(),
@@ -54,7 +55,7 @@ function setup() {
   const event = ref<GiftEvent>({ ...base })
   const settings = ref<DisplaySettings>({
     title: '自定标题',
-    photoDataUrl: null,
+    photoUrl: null,
     columnsPerPage: 12,
     version: 3,
   })
@@ -62,23 +63,38 @@ function setup() {
   return {
     config: useEventSettings(event, settings, ref([]), reload),
     event,
+    settings,
     reload,
   }
 }
 beforeEach(() => {
   localStorage.clear()
   vi.resetAllMocks()
+  vi.stubGlobal(
+    'URL',
+    class extends URL {
+      static revokeObjectURL = vi.fn()
+    },
+  )
   vi.mocked(giftApi.createEvent).mockResolvedValue(base)
   vi.mocked(giftApi.updateEvent).mockResolvedValue(base)
   vi.mocked(giftApi.updateSettings).mockResolvedValue({
     title: '已保存标题',
-    photoDataUrl: null,
+    photoUrl: null,
+    columnsPerPage: 12,
+    version: 4,
+  })
+  vi.mocked(giftApi.updateSettingsPhoto).mockResolvedValue({
+    title: '已保存标题',
+    photoUrl: '/api/file/static/20261127/new.png',
     columnsPerPage: 12,
     version: 4,
   })
   vi.mocked(giftApi.issueDisplayToken).mockResolvedValue({ token: 'issued' })
   vi.mocked(giftApi.rotateDisplayToken).mockResolvedValue({ token: 'rotated' })
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('event types, drafts and reusable display credentials', () => {
   it('rejects blank or overlong display titles without saving or reporting success, and trims a valid 128-character title', async () => {
@@ -134,25 +150,112 @@ describe('event types, drafts and reusable display credentials', () => {
 
   it('only reports successful photo draft changes, and marks them as awaiting save', async () => {
     const { config } = setup()
-    const file = {} as File
+    config.openDisplay()
+    const file = new File(['image'], 'activity.png', { type: 'image/png' })
     vi.mocked(readActivityPhoto).mockRejectedValueOnce(
       new Error('Invalid photo'),
     )
     await config.photo(file)
     expect(saved).not.toHaveBeenCalled()
-    expect(config.settingsDraft.photoDataUrl).toBeNull()
-    vi.mocked(readActivityPhoto).mockResolvedValueOnce(
-      'data:image/png;base64,valid',
-    )
+    expect(config.settingsDraft.photoUrl).toBeNull()
+    vi.mocked(readActivityPhoto).mockResolvedValueOnce('blob:local-photo')
     await config.photo(file)
     expect(saved).toHaveBeenNthCalledWith(1, locales.zh.selectedPhoto)
     config.removePhoto()
-    expect(config.settingsDraft.photoDataUrl).toBeNull()
+    expect(config.settingsDraft.photoUrl).toBeNull()
     expect(saved).toHaveBeenNthCalledWith(2, locales.zh.removedPhoto)
     config.removePhoto()
     expect(saved).toHaveBeenCalledTimes(2)
     expect(giftApi.updateSettings).not.toHaveBeenCalled()
   })
+
+  it('uploads a pending file and settings together only on save, retaining the draft after a rejected write', async () => {
+    const { config, settings, reload } = setup()
+    const oldUrl = '/api/file/static/20261127/old.png'
+    settings.value!.photoUrl = oldUrl
+    config.openDisplay()
+    const file = new File(['image'], 'activity.png', { type: 'image/png' })
+    vi.mocked(readActivityPhoto).mockResolvedValueOnce('blob:local-photo')
+    await config.photo(file)
+    expect(giftApi.updateSettingsPhoto).not.toHaveBeenCalled()
+    expect(settings.value!.photoUrl).toBe(oldUrl)
+    vi.mocked(giftApi.updateSettingsPhoto).mockRejectedValueOnce(
+      new Error('Upload failed'),
+    )
+    await config.saveDisplay()
+    expect(config.task.error.value).toBe('Upload failed')
+    expect(config.displayOpen.value).toBe(true)
+    expect(config.settingsDraft.photoUrl).toBe('blob:local-photo')
+    expect(settings.value!.photoUrl).toBe(oldUrl)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+    expect(reload).not.toHaveBeenCalled()
+    await config.saveDisplay()
+    expect(giftApi.updateSettingsPhoto).toHaveBeenLastCalledWith('a', file, {
+      title: '自定标题',
+      columnsPerPage: 12,
+      expectedVersion: 3,
+    })
+    expect(giftApi.updateSettings).not.toHaveBeenCalled()
+    expect(config.displayOpen.value).toBe(false)
+    expect(config.settingsDraft.photoUrl).toBe(
+      '/api/file/static/20261127/new.png',
+    )
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:local-photo')
+  })
+
+  it('releases replacement and cancelled local previews without uploading and sends null only on saved removal', async () => {
+    const { config, settings } = setup()
+    settings.value!.photoUrl = '/api/file/static/20261127/old.png'
+    config.openDisplay()
+    vi.mocked(readActivityPhoto)
+      .mockResolvedValueOnce('blob:first')
+      .mockResolvedValueOnce('blob:second')
+    const file = new File(['image'], 'activity.png', { type: 'image/png' })
+    await config.photo(file)
+    await config.photo(file)
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first')
+    config.displayOpen.value = false
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:second')
+    expect(giftApi.updateSettingsPhoto).not.toHaveBeenCalled()
+    config.openDisplay()
+    expect(config.settingsDraft.photoUrl).toBe(settings.value!.photoUrl)
+    config.removePhoto()
+    expect(settings.value!.photoUrl).toBe('/api/file/static/20261127/old.png')
+    await config.saveDisplay()
+    expect(giftApi.updateSettings).toHaveBeenCalledWith(
+      'a',
+      expect.objectContaining({ photoUrl: null }),
+    )
+    expect(giftApi.updateSettingsPhoto).not.toHaveBeenCalled()
+  })
+
+  it.each(['cancel', 'switch', 'dispose'] as const)(
+    'discards a late decoded image after %s',
+    async (action) => {
+      const scope = effectScope()
+      const { config, event } = scope.run(setup)!
+      config.openDisplay()
+      let complete!: (url: string) => void
+      vi.mocked(readActivityPhoto).mockReturnValueOnce(
+        new Promise((resolve) => {
+          complete = resolve
+        }),
+      )
+      const pending = config.photo(
+        new File(['image'], 'activity.png', { type: 'image/png' }),
+      )
+      if (action === 'cancel') config.displayOpen.value = false
+      if (action === 'switch') event.value = { ...base, id: 'b' }
+      if (action === 'dispose') scope.stop()
+      complete('blob:late')
+      await pending
+      expect(config.settingsDraft.photoUrl).toBeNull()
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:late')
+      expect(saved).not.toHaveBeenCalled()
+      expect(giftApi.updateSettingsPhoto).not.toHaveBeenCalled()
+      scope.stop()
+    },
+  )
 
   it('reports creation and restore as successful even if their following refresh fails', async () => {
     const { config, reload } = setup()
@@ -399,7 +502,7 @@ it('accepts both legacy v1 and current v2 backup files without inventing missing
     const payload = {
       schemaVersion,
       event: { name: '旧活动' },
-      settings: {},
+      settings: { photoDataUrl: 'data:image/png;base64,legacy' },
       entries: [],
       audits: [],
     }
@@ -409,6 +512,7 @@ it('accepts both legacy v1 and current v2 backup files without inventing missing
     } as File
     const bundle = await readBackup(file)
     expect(bundle.schemaVersion).toBe(schemaVersion)
+    expect(bundle.settings.photoDataUrl).toBe('data:image/png;base64,legacy')
     expect(bundle.event).not.toHaveProperty('eventType')
   }
   const unsupported = {

@@ -51,6 +51,7 @@ import { useGiftEntitlements } from '../hooks/useGiftEntitlements'
 import GiftQuotaNotice from '../components/GiftQuotaNotice.vue'
 import { giftApi } from '../api'
 import { formatAmount } from '../utils/money'
+import { resolveActivityPhotoUrl } from '../utils/photos'
 import '../gift-registry.css'
 import type { EntryAudit, GiftEntry } from '../types'
 
@@ -730,9 +731,9 @@ async function copyDisplay() {
           <div class="gift-photo-editor">
             <div class="gift-photo-card">
               <img
-                v-if="config.settingsDraft.photoDataUrl"
+                v-if="config.settingsDraft.photoUrl"
                 class="gift-photo-preview"
-                :src="config.settingsDraft.photoDataUrl"
+                :src="resolveActivityPhotoUrl(config.settingsDraft.photoUrl)"
                 :alt="t('gift.photo')"
               />
               <a-empty
@@ -755,7 +756,7 @@ async function copyDisplay() {
                   }}</a-button>
                 </a-upload>
                 <a-button
-                  v-if="config.settingsDraft.photoDataUrl"
+                  v-if="config.settingsDraft.photoUrl"
                   :disabled="config.task.busy.value"
                   @click="config.removePhoto"
                   >{{ t('gift.removePhoto') }}</a-button

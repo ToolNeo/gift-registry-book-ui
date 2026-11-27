@@ -11,6 +11,7 @@ import {
 import { useI18n } from 'vue-i18n'
 import type { DisplaySnapshot } from '../types'
 import { eventPresets } from '../themes'
+import { resolveActivityPhotoUrl } from '../utils/photos'
 import { formatAmount, uppercaseRmb } from '../utils/money'
 
 const props = defineProps({
@@ -142,9 +143,9 @@ onBeforeUnmount(() => {
       </p>
       <div class="gift-book-photo-frame">
         <img
-          v-if="snapshot.settings.photoDataUrl"
+          v-if="snapshot.settings.photoUrl"
           class="gift-book-photo"
-          :src="snapshot.settings.photoDataUrl"
+          :src="resolveActivityPhotoUrl(snapshot.settings.photoUrl)"
           :alt="t('gift.photo')"
         />
         <div v-else class="gift-book-emblem" aria-hidden="true">

@@ -70,7 +70,7 @@ export interface GiftSummary {
 
 export interface DisplaySettings {
   title: string
-  photoDataUrl: string | null
+  photoUrl: string | null
   columnsPerPage: number
   version: number
 }
@@ -109,10 +109,15 @@ export interface DisplaySnapshot {
   pageSize: number
 }
 
+/** Portable backups keep photo bytes; ordinary settings only carry a file URL. */
+export interface BackupSettings extends Omit<DisplaySettings, 'photoUrl'> {
+  photoDataUrl: string | null
+}
+
 export interface BackupBundle {
   schemaVersion: 1 | 2
   event: GiftEvent
-  settings: DisplaySettings
+  settings: BackupSettings
   entries: GiftEntry[]
   audits: EntryAudit[]
 }

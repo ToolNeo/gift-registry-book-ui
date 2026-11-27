@@ -66,7 +66,7 @@ it('collects event choices with the actual bounded paging contract instead of pa
   vi.mocked(giftApi.event).mockResolvedValue(first)
   vi.mocked(giftApi.settings).mockResolvedValue({
     title: '',
-    photoDataUrl: null,
+    photoUrl: null,
     columnsPerPage: 12,
     version: 1,
   })
@@ -116,7 +116,7 @@ async function setup(preferredId?: string) {
   vi.mocked(giftApi.event).mockResolvedValue(event)
   vi.mocked(giftApi.settings).mockResolvedValue({
     title: '喜宴',
-    photoDataUrl: null,
+    photoUrl: null,
     columnsPerPage: 12,
     version: 2,
   })

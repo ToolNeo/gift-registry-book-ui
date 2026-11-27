@@ -10,8 +10,10 @@ import type {
   GiftEvent,
 } from '../../src/modules/gift-registry-manager-ui/types'
 
-const photo =
+const photo = '/api/file/static/20261127/activity.png'
+const embeddedPhoto =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB9kAAAAASUVORK5CYII='
+const photoBytes = Buffer.from(embeddedPhoto.split(',')[1]!, 'base64')
 
 /** Browser fixtures exercise the real router/forms/HTTP clients while recording the frozen backend contract. */
 async function fixture(
@@ -57,7 +59,7 @@ async function fixture(
   const settings = new Map<string, DisplaySettings>(
     events.map((event) => [
       event.id,
-      { title: event.name, photoDataUrl: null, columnsPerPage: 12, version: 1 },
+      { title: event.name, photoUrl: null, columnsPerPage: 12, version: 1 },
     ]),
   )
   const requests: {
@@ -104,7 +106,18 @@ async function fixture(
     const url = new URL(request.url()),
       path = url.pathname.replace(/^\/api/, ''),
       method = request.method()
-    const body = request.postData() ? request.postDataJSON() : undefined
+    const multipart = request
+      .headers()
+      ['content-type']?.startsWith('multipart/form-data')
+    let body =
+      request.postData() && !multipart ? request.postDataJSON() : undefined
+    if (multipart) {
+      const raw = request.postDataBuffer()!.toString('utf8')
+      const settingsPart = raw.match(
+        /name="settings"[^\r\n]*\r\nContent-Type: application\/json\r\n\r\n([^\r\n]*)/i,
+      )
+      body = JSON.parse(settingsPart![1]!)
+    }
     requests.push({ path, method, body, headers: request.headers() })
     const send = (result: unknown, status = 200) =>
       route.fulfill({
@@ -117,6 +130,8 @@ async function fixture(
           message: status >= 400 ? 'Access denied' : undefined,
         }),
       })
+    if (path === '/file/static/20261127/activity.png')
+      return route.fulfill({ contentType: 'image/png', body: photoBytes })
     if (path === '/system/config/front') return send({})
     if (path === '/user/detail')
       return send({
@@ -230,7 +245,7 @@ async function fixture(
       events.push(event)
       settings.set(event.id, {
         title: event.name,
-        photoDataUrl: null,
+        photoUrl: null,
         columnsPerPage: 12,
         version: 1,
       })
@@ -246,7 +261,11 @@ async function fixture(
         description: body.event.description || '',
       }
       events.push(event)
-      settings.set(event.id, body.settings)
+      const { photoDataUrl, ...restoredSettings } = body.settings
+      settings.set(event.id, {
+        ...restoredSettings,
+        photoUrl: photoDataUrl ? photo : null,
+      })
       for (const item of body.entries)
         addEntry(event.id, {
           ...item,
@@ -339,6 +358,18 @@ async function fixture(
         Object.assign(event, body, { version: event.version + 1 })
       }
       return send(event)
+    }
+    if (suffix === '/display-settings/photo') {
+      if (!actions.includes('save')) return send(null, 403)
+      if (
+        !multipart ||
+        !body.title?.trim() ||
+        body.expectedVersion !== settings.get(id!)!.version
+      )
+        return send(null, 409)
+      event.version++
+      settings.set(id!, { ...body, photoUrl: photo, version: event.version })
+      return send(settings.get(id!))
     }
     if (suffix === '/display-settings') {
       if (method === 'PUT') {
@@ -486,7 +517,12 @@ async function fixture(
       return send({
         schemaVersion: 2,
         event,
-        settings: settings.get(id!),
+        settings: {
+          title: settings.get(id!)!.title,
+          columnsPerPage: settings.get(id!)!.columnsPerPage,
+          photoDataUrl: settings.get(id!)!.photoUrl ? embeddedPhoto : null,
+          version: settings.get(id!)!.version,
+        },
         entries: entries.filter((item) => item.eventId === id),
         audits: audits.filter((item) => item.eventId === id),
       } satisfies BackupBundle)
@@ -1145,7 +1181,7 @@ test('required event presets preview and render all ten event styles with bundle
     const config = state.settings.get(event.id)!
     Object.assign(config, {
       title: `${preset.name}主题礼簿`,
-      photoDataUrl: photo,
+      photoUrl: photo,
       columnsPerPage: 12,
     })
     state.addEntry(event.id, {
@@ -1359,17 +1395,26 @@ test('photo preview, independent display, new-page synchronization, offline rete
   await modal.locator('input[type=file]').setInputFiles({
     name: 'event.png',
     mimeType: 'image/png',
-    buffer: Buffer.from(photo.split(',')[1]!, 'base64'),
+    buffer: photoBytes,
   })
   await expect(modal.locator('.gift-photo-preview')).toBeVisible()
   await expectSuccessToast(page, '照片已选取，请保存展示设置')
+  expect(
+    state.requests.filter((request) =>
+      request.path.endsWith('/display-settings/photo'),
+    ),
+  ).toHaveLength(0)
+  await expect(modal.locator('.gift-photo-preview')).toHaveAttribute(
+    'src',
+    /^blob:/,
+  )
   await modal.getByRole('button', { name: '移除照片', exact: true }).click()
   await expectSuccessToast(page, '照片已移除，请保存展示设置')
   await expect(modal.locator('.gift-photo-preview')).toHaveCount(0)
   await modal.locator('input[type=file]').setInputFiles({
     name: 'event-again.png',
     mimeType: 'image/png',
-    buffer: Buffer.from(photo.split(',')[1]!, 'base64'),
+    buffer: photoBytes,
   })
   await expect(modal.locator('.gift-photo-preview')).toBeVisible()
   await page.screenshot({
@@ -1386,6 +1431,20 @@ test('photo preview, independent display, new-page synchronization, offline rete
   await modal.getByRole('button', { name: '保存', exact: true }).click()
   await expect(modal).not.toBeVisible()
   await expectSuccessToast(page, '展示设置保存成功')
+  const upload = state.requests.filter((request) =>
+    request.path.endsWith('/display-settings/photo'),
+  )
+  expect(upload).toHaveLength(1)
+  expect(upload[0]!.method).toBe('POST')
+  expect(upload[0]!.headers['content-type']).toMatch(
+    /^multipart\/form-data; boundary=/,
+  )
+  expect(upload[0]!.body).toEqual({
+    title: '喜宴礼簿',
+    columnsPerPage: 1,
+    expectedVersion: 1,
+  })
+  expect(state.settings.get('a')!.photoUrl).toBe(photo)
   await page.getByRole('button', { name: '展示设置', exact: true }).click()
   await page
     .getByRole('dialog')
@@ -1467,7 +1526,11 @@ test('photo preview, independent display, new-page synchronization, offline rete
   const bundle = {
     schemaVersion: 1,
     event: { ...state.events[0], eventType: undefined, description: undefined },
-    settings: state.settings.get('a'),
+    settings: {
+      ...state.settings.get('a'),
+      photoUrl: undefined,
+      photoDataUrl: embeddedPhoto,
+    },
     entries: state.entries,
     audits: [],
   }
@@ -1628,7 +1691,7 @@ test('display fits complete text and adapts page columns to large and narrow scr
   const config = state.settings.get('a')!
   const longDescription = '亲友情谊'.repeat(256)
   activity.description = longDescription
-  config.photoDataUrl = photo
+  config.photoUrl = photo
   activity.version++
   await expect(page.locator('.gift-book-description')).toHaveText(
     longDescription,
@@ -2212,7 +2275,7 @@ for (const width of [1280, 390]) {
     state.settings.set(original.id, {
       ...state.settings.get(original.id)!,
       title: '独立展示标题',
-      photoDataUrl: photo,
+      photoUrl: photo,
     })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
