@@ -63,9 +63,16 @@ watch(
           v-for="preset in eventPresets"
           :key="preset.value"
           :value="preset.value"
-          class="gift-preset-option"
+          class="gift-preset-card"
+          :class="`gift-preset-card--${preset.value.toLowerCase()}`"
         >
-          {{ t(`gift.${preset.value}`) }}
+          <span class="gift-preset-swatch" aria-hidden="true">{{
+            preset.ornament || '✾'
+          }}</span>
+          <strong>{{ t(`gift.${preset.value}`) }}</strong>
+          <span class="gift-preset-hint">{{
+            t(`gift.preset_${preset.value}`)
+          }}</span>
         </a-radio>
       </a-radio-group>
     </a-form-item>
@@ -147,12 +154,71 @@ watch(
   gap: var(--space-3);
   width: 100%;
 }
-.gift-preset-option {
+.gift-preset-card {
   margin: 0;
-  padding: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #8e2630;
+  color: #ffe6ad;
+  align-items: flex-start;
 }
-.gift-preset-option.ant-radio-wrapper-checked {
-  color: var(--color-primary);
+.gift-preset-card--birthday {
+  background: #9b2b20;
+  color: #ffefbc;
+}
+.gift-preset-card--funeral {
+  background: #f8f9f5;
+  color: #3e4a41;
+}
+.gift-preset-card--full_moon {
+  background: #f8d8d2;
+  color: #6f2a3f;
+}
+.gift-preset-card--hundred_days {
+  background: #f7e3be;
+  color: #684425;
+}
+.gift-preset-card--first_birthday {
+  background: #b9472d;
+  color: #fff0bf;
+}
+.gift-preset-card--engagement {
+  background: #88314e;
+  color: #ffe4cf;
+}
+.gift-preset-card--housewarming {
+  background: #1f5a52;
+  color: #fff0bf;
+}
+.gift-preset-card--graduation {
+  background: #243f67;
+  color: #fff0c2;
+}
+.gift-preset-card--business_opening {
+  background: #a52625;
+  color: #ffecb0;
+}
+.gift-preset-card.ant-radio-wrapper-checked {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.gift-preset-card :deep(.ant-radio + span) {
+  flex: 1;
+  min-width: 0;
+}
+.gift-preset-swatch {
+  display: block;
+  font-family: 'Gift Handwriting', serif;
+  font-size: 40px;
+  line-height: 1.2;
+  margin-bottom: var(--space-2);
+}
+.gift-preset-hint {
+  display: block;
+  font-size: 12px;
+  margin-top: var(--space-2);
+  line-height: 1.5;
 }
 .gift-event-details {
   display: grid;
@@ -193,6 +259,12 @@ watch(
 @media (width <= 700px) {
   .gift-preset-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gift-preset-card {
+    padding: var(--space-3);
+  }
+  .gift-preset-swatch {
+    font-size: 32px;
   }
   .gift-event-details {
     grid-template-columns: minmax(0, 1fr);
