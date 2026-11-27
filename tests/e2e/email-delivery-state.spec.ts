@@ -55,7 +55,7 @@ for (const width of [1280, 390]) {
     })
     await page.goto('login')
     await page.locator('.login-registration').getByRole('button', { name: '注册', exact: true }).click()
-    const modal = page.getByRole('dialog')
+    const modal = page.getByRole('region', { name: '注册账号', exact: true })
     await modal.getByLabel('电子邮箱', { exact: true }).fill('person@example.test')
     await modal.getByLabel('图形验证码', { exact: true }).fill('A2BCD')
     await modal.getByRole('button', { name: '发送验证码', exact: true }).click()

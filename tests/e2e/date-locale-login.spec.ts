@@ -22,7 +22,7 @@ test.beforeEach(async ({ request }) => {
 })
 
 for (const width of [1280, 390]) {
-  test(`registration stays on the right and date controls follow the selected language (${width}px)`, async ({ page }) => {
+  test(`registration stays centered and date controls follow the selected language (${width}px)`, async ({ page }) => {
     test.setTimeout(90000)
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
@@ -50,11 +50,11 @@ for (const width of [1280, 390]) {
     const registerBox = (await registration.boundingBox())!
     const loginBox = (await page.getByRole('button', { name: '登录', exact: true }).boundingBox())!
     expect(registerBox.width).toBeLessThan(100)
-    expect(Math.abs(registerBox.x + registerBox.width - loginBox.x - loginBox.width)).toBeLessThan(2)
-    await page.screenshot({ path: test.info().outputPath(`register-right-${width}.png`), fullPage: true })
+    expect(Math.abs(registerBox.x + registerBox.width / 2 - loginBox.x - loginBox.width / 2)).toBeLessThan(2)
+    await page.screenshot({ path: test.info().outputPath(`register-center-${width}.png`), fullPage: true })
     await registration.click()
-    await expect(page.getByRole('dialog', { name: '注册账号', exact: true })).toBeVisible()
-    await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+    await expect(page.getByRole('region', { name: '注册账号', exact: true })).toBeVisible()
+    await page.getByRole('region', { name: '注册账号', exact: true }).getByRole('button', { name: '返回登录', exact: true }).click()
     await page.getByRole('button', { name: '语言', exact: true }).click()
     await expect(page.locator('.login-registration').getByRole('button', { name: 'Register', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Language', exact: true }).click()

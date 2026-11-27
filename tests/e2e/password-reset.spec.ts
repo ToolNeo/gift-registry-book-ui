@@ -24,25 +24,22 @@ test.beforeEach(async ({ request, page }) => {
 })
 async function open(page: Page) {
   await page.goto('login')
-  const actions = page.locator('.login-registration')
-  const register = actions.getByRole('button', { name: '注册', exact: true })
-  const forgot = actions.getByRole('button', { name: '忘记密码', exact: true })
+  const register = page.getByRole('button', { name: '注册', exact: true })
+  const forgot = page.getByRole('button', { name: '忘记密码', exact: true })
   await expect(register).toBeVisible()
   await expect(forgot).toBeVisible()
-  const [box, left, right] = await Promise.all([
-    actions.boundingBox(),
-    register.boundingBox(),
-    forgot.boundingBox(),
-  ])
-  expect(left!.x).toBeCloseTo(box!.x, 0)
-  expect(right!.x + right!.width).toBeCloseTo(box!.x + box!.width, 0)
-  expect(left!.x + left!.width).toBeLessThan(right!.x)
-  // Both footer controls participate in the normal keyboard tab order.
-  await register.focus()
+  const options = await page.locator('.login-remember').boundingBox()
+  const recovery = await forgot.boundingBox()
+  expect(recovery!.x + recovery!.width).toBeCloseTo(options!.x + options!.width, 0)
+  // Recovery, submit and registration remain in the natural keyboard tab order.
+  await forgot.focus()
   await page.keyboard.press('Tab')
-  await expect(forgot).toBeFocused()
+  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(register).toBeFocused()
+  await forgot.focus()
   await page.keyboard.press('Enter')
-  const modal = page.getByRole('dialog', { name: '忘记密码', exact: true })
+  const modal = page.getByRole('region', { name: '忘记密码', exact: true })
   await expect(modal).toBeVisible()
   await expect(modal.getByRole('img', { name: '图形验证码', exact: true })).toBeVisible()
   return modal
@@ -56,7 +53,7 @@ async function assertNoOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   )
-  const modal = page.getByRole('dialog')
+  const modal = page.getByRole('region')
   expect(await modal.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
     true,
   )
@@ -194,12 +191,12 @@ test('mobile reset stays within the viewport and cancels pending mail when close
   const cancelled = page.waitForEvent('requestfailed', (request) =>
     request.url().endsWith('/authorize/password/reset/email-code'),
   )
-  await modal.getByRole('button', { name: '取消', exact: true }).click()
+  await modal.getByRole('button', { name: '返回登录', exact: true }).click()
   expect((await cancelled).failure()?.errorText).toContain('ERR_ABORTED')
   release()
   await expect(modal).toHaveCount(0)
   await page
-    .locator('.login-registration')
+    .locator('.login-remember')
     .getByRole('button', { name: '忘记密码', exact: true })
     .click()
   await expect(modal.getByLabel('用户名', { exact: true })).toHaveValue('')
